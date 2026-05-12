@@ -13,14 +13,14 @@
  * Both modes share the same HTTP client and normalize layer.
  */
 
-import { resolveConfig, redactApiKey } from "./src/config.ts";
-import { createIflowClient, type IflowClient } from "./src/client.ts";
+import { resolveConfig, redactApiKey } from "./src/config.js";
+import { createIflowClient, type IflowClient } from "./src/client.js";
 import {
   createImageSearchTool,
   createWebFetchTool,
   createWebSearchTool,
-} from "./src/tools.ts";
-import { createIflowWebSearchProvider } from "./src/web-search-provider.ts";
+} from "./src/tools.js";
+import { createIflowWebSearchProvider } from "./src/web-search-provider.js";
 
 // Minimal local mirror of the OpenClaw PluginApi surface we touch. We do NOT
 // import from "openclaw/plugin-sdk" here so the plugin can be type-checked

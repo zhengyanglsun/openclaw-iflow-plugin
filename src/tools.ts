@@ -11,17 +11,17 @@
  */
 
 import { Type, type Static, type TSchema } from "@sinclair/typebox";
-import type { IflowClient } from "./client.ts";
+import type { IflowClient } from "./client.js";
 import {
   invalidParamError,
   missingParamError,
   type IflowError,
-} from "./errors.ts";
+} from "./errors.js";
 import {
   normalizeImageSearch,
   normalizeWebFetch,
   normalizeWebSearch,
-} from "./normalize.ts";
+} from "./normalize.js";
 
 // -- Schemas ----------------------------------------------------------------
 

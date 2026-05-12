@@ -12,7 +12,10 @@
       { "id": "iflow", "authMethods": ["api-key"], "envVars": ["IFLOW_API_KEY"] }
     ]
   },
-  "contracts": { "webSearchProviders": ["iflow"] },
+  "contracts": {
+    "tools": ["iflow_web_search", "iflow_image_search", "iflow_web_fetch"],
+    "webSearchProviders": ["iflow"]
+  },
   "configSchema": {
     "type": "object",
     "additionalProperties": false,

@@ -23,21 +23,21 @@
     "web-fetch",
     "ai-search"
   ],
+  "main": "./dist/index.js",
+  "exports": {
+    ".": "./dist/index.js"
+  },
   "files": [
-    "index.ts",
+    "dist",
     "openclaw.plugin.json",
     "skills",
     "README.md",
-    "LICENSE",
-    "src/client.ts",
-    "src/config.ts",
-    "src/errors.ts",
-    "src/normalize.ts",
-    "src/tools.ts",
-    "src/web-search-provider.ts"
+    "LICENSE"
   ],
   "scripts": {
     "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json",
+    "prepack": "npm run build",
     "test": "vitest run",
     "test:watch": "vitest",
     "smoke": "node scripts/smoke.mjs"
@@ -53,6 +53,9 @@
       "optional": true
     }
   },
+  "engines": {
+    "node": ">=18"
+  },
   "devDependencies": {
     "@types/node": "^20.0.0",
     "typescript": "^5.4.0",
@@ -60,7 +63,7 @@
   },
   "openclaw": {
     "extensions": [
-      "./index.ts"
+      "./dist/index.js"
     ]
   }
 }

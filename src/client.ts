@@ -16,14 +16,14 @@ import {
   networkError,
   networkTimeoutError,
   type IflowError,
-} from "./errors.ts";
-import type { IflowResolvedConfig } from "./config.ts";
+} from "./errors.js";
+import type { IflowResolvedConfig } from "./config.js";
 import type {
   IflowEnvelope,
   RawImageSearchData,
   RawWebFetchData,
   RawWebSearchData,
-} from "./normalize.ts";
+} from "./normalize.js";
 
 export interface ClientLogger {
   info: (msg: string) => void;

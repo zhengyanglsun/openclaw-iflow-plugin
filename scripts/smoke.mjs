@@ -13,13 +13,13 @@
  * API key.
  */
 
-import { resolveConfig, redactApiKey } from "../src/config.ts";
-import { createIflowClient } from "../src/client.ts";
+import { resolveConfig, redactApiKey } from "../dist/src/config.js";
+import { createIflowClient } from "../dist/src/client.js";
 import {
   normalizeImageSearch,
   normalizeWebFetch,
   normalizeWebSearch,
-} from "../src/normalize.ts";
+} from "../dist/src/normalize.js";
 
 const which = (process.argv[2] ?? "all").toLowerCase();
 

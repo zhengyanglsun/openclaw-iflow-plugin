@@ -9,8 +9,8 @@
  * drift downgrades to tools-only mode without breaking plugin load.
  */
 
-import type { IflowClient } from "./client.ts";
-import { normalizeWebSearch } from "./normalize.ts";
+import type { IflowClient } from "./client.js";
+import { normalizeWebSearch } from "./normalize.js";
 
 const CREDENTIAL_PATH = "plugins.entries.iflow.config.webSearch.apiKey";
 
