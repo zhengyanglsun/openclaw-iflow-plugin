@@ -1,0 +1,66 @@
+{
+  "id": "iflow",
+  "name": "iFlow Search",
+  "description": "iFlow Search (心流搜索) — Chinese-first web search, image search, and web content fetch. Exposes iflow_web_search, iflow_image_search, iflow_web_fetch, and registers as the 'iflow' web_search provider when the runtime supports it.",
+  "version": "0.1.0",
+  "kind": "tools",
+  "skills": ["./skills"],
+  "activation": { "onStartup": false },
+  "providerAuthEnvVars": { "iflow": ["IFLOW_API_KEY"] },
+  "setup": {
+    "providers": [
+      { "id": "iflow", "authMethods": ["api-key"], "envVars": ["IFLOW_API_KEY"] }
+    ]
+  },
+  "contracts": { "webSearchProviders": ["iflow"] },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "webSearch": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "apiKey": {
+            "type": ["string", "object"],
+            "description": "iFlow API key (string or SecretRef). Falls back to the IFLOW_API_KEY env var."
+          },
+          "baseUrl": {
+            "type": ["string", "object"],
+            "description": "Override the iFlow API base URL. Defaults to https://platform.iflow.cn."
+          },
+          "timeoutSeconds": {
+            "type": "number",
+            "description": "HTTP timeout per request in seconds. Default: 30."
+          },
+          "cacheTtlMinutes": {
+            "type": "number",
+            "description": "In-memory cache TTL in minutes. Default: 15. Set 0 to disable."
+          }
+        }
+      }
+    }
+  },
+  "uiHints": {
+    "webSearch.apiKey": {
+      "label": "iFlow API Key",
+      "help": "iFlow Search API key. Falls back to the IFLOW_API_KEY environment variable.",
+      "sensitive": true,
+      "placeholder": "sk-..."
+    },
+    "webSearch.baseUrl": {
+      "label": "iFlow Base URL",
+      "help": "Optional base URL override for trusted proxies. Defaults to https://platform.iflow.cn.",
+      "advanced": true
+    },
+    "webSearch.timeoutSeconds": {
+      "label": "Timeout (seconds)",
+      "advanced": true
+    },
+    "webSearch.cacheTtlMinutes": {
+      "label": "Cache TTL (minutes)",
+      "help": "How long to cache identical search/fetch responses. Set 0 to disable.",
+      "advanced": true
+    }
+  }
+}

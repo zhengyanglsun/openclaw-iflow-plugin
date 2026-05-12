@@ -1,0 +1,54 @@
+{
+  "name": "@iflow-ai/iflow-plugin",
+  "version": "0.1.0",
+  "description": "iFlow Search plugin for OpenClaw — exposes iflow_web_search, iflow_image_search, iflow_web_fetch, and registers (best-effort) as the web_search provider 'iflow'",
+  "type": "module",
+  "license": "MIT",
+  "author": "iflow-ai",
+  "homepage": "https://platform.iflow.cn",
+  "keywords": [
+    "openclaw",
+    "openclaw-plugin",
+    "iflow",
+    "iflow-search",
+    "web-search",
+    "image-search",
+    "web-fetch",
+    "ai-search"
+  ],
+  "files": [
+    "index.ts",
+    "src",
+    "openclaw.plugin.json",
+    "skills",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "smoke": "node scripts/smoke.mjs"
+  },
+  "dependencies": {
+    "@sinclair/typebox": "0.34.47"
+  },
+  "peerDependencies": {
+    "openclaw": ">=2025.0.0"
+  },
+  "peerDependenciesMeta": {
+    "openclaw": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.0"
+  },
+  "openclaw": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}
