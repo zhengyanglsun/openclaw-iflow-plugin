@@ -5,6 +5,13 @@
   "type": "module",
   "license": "MIT",
   "author": "iflow-ai",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zhengyanglsun/openclaw-iflow-plugin.git"
+  },
+  "bugs": {
+    "url": "https://github.com/zhengyanglsun/openclaw-iflow-plugin/issues"
+  },
   "homepage": "https://platform.iflow.cn",
   "keywords": [
     "openclaw",
@@ -18,11 +25,16 @@
   ],
   "files": [
     "index.ts",
-    "src",
     "openclaw.plugin.json",
     "skills",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "src/client.ts",
+    "src/config.ts",
+    "src/errors.ts",
+    "src/normalize.ts",
+    "src/tools.ts",
+    "src/web-search-provider.ts"
   ],
   "scripts": {
     "typecheck": "tsc --noEmit",

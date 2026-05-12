@@ -8,3 +8,7 @@ dist/
 coverage/
 .vitest-cache/
 *.tgz
+
+# Local-only Claude Code / Superpowers process docs — not for repo or npm.
+docs/superpowers/specs/
+docs/superpowers/progress/
