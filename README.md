@@ -194,6 +194,16 @@ openclaw plugins inspect iflow --runtime --json
   `openclaw/plugin-sdk/provider-web-search-config-contract` is importable.
   Failure is logged at info level; the plugin keeps working in tools mode.
 
+## Acknowledgements
+
+This plugin includes an OpenClaw-specific skill definition under
+`skills/iflow-search/SKILL.md`. It is adapted from the official iFlow skill
+catalog, but uses OpenClaw tool names and normalized parameters / return
+fields instead of the upstream shell-script interface.
+
+Official iFlow skill reference:
+https://github.com/iflow-ai/iflow-skills/tree/main/skills/iflow-search
+
 ## License
 
 MIT

@@ -128,3 +128,11 @@ Error codes: `missing_api_key`, `missing_param`, `invalid_param`,
 
 - iFlow Open Platform docs: https://platform.iflow.cn/docs/
 - Plugin package: `@iflow-ai/iflow-plugin`
+
+## Acknowledgements
+
+This OpenClaw skill is adapted from the official iFlow skill catalog:
+
+https://github.com/iflow-ai/iflow-skills/tree/main/skills/iflow-search
+
+The capability surface is aligned with the official iFlow Search skill. Tool names, parameter shape, normalized return fields, and error handling are adapted for the OpenClaw plugin runtime.
