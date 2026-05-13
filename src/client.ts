@@ -30,7 +30,7 @@ import type {
 // integration. Bump IFLOW_PLUGIN_VERSION alongside package.json#version at
 // every release (see progress doc §7.3 release runbook).
 export const IFLOW_PLUGIN_NAME = "@iflow-ai/iflow-plugin";
-export const IFLOW_PLUGIN_VERSION = "0.1.1";
+export const IFLOW_PLUGIN_VERSION = "0.1.2";
 export const IFLOW_PLUGIN_SOURCE = "openclaw";
 export const ATTRIBUTION_HEADERS = {
   "IFlow-Source": IFLOW_PLUGIN_SOURCE,
