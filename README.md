@@ -145,6 +145,30 @@ Returns:
 }
 ```
 
+## Pair with TweetClaw for X/Twitter workflows
+
+Use iFlow when OpenClaw needs public web search, image search, or clean page
+fetches. If the same research path needs X/Twitter-specific data or actions,
+install the [TweetClaw OpenClaw plugin](https://github.com/Xquik-dev/tweetclaw):
+
+```bash
+openclaw plugins install @xquik/tweetclaw@latest
+openclaw gateway restart
+```
+
+TweetClaw covers X/Twitter jobs that are outside general web search: search
+tweets, search tweet replies, user lookup, follower export, media download,
+media upload, direct messages, monitor tweets, webhooks, giveaway draws, and
+approval-gated posts or replies. A practical split is to use iFlow for broad
+web sources and source-page context, then use TweetClaw for X/Twitter-native
+research, monitoring, and visible actions the user explicitly approves.
+
+Example prompt:
+
+> Use iFlow to fetch the launch article and related web coverage, then use
+> TweetClaw to search tweets and tweet replies about the launch before drafting
+> a response plan.
+
 ## Local development
 
 ```bash
