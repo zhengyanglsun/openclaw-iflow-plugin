@@ -2,7 +2,7 @@
   "id": "iflow",
   "name": "iFlow Search",
   "description": "iFlow Search (心流搜索) — Chinese-first web search, image search, and web content fetch. Exposes iflow_web_search, iflow_image_search, iflow_web_fetch, and registers as the 'iflow' web_search provider when the runtime supports it.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "skills": ["./skills"],
   "activation": { "onStartup": false },
   "providerAuthEnvVars": { "iflow": ["IFLOW_API_KEY"] },
