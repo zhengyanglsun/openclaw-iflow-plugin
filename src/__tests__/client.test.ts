@@ -1,5 +1,12 @@
 import { describe, expect, it, vi, type Mock } from "vitest";
-import { createIflowClient, type ClientLogger } from "../client.ts";
+import {
+  ATTRIBUTION_HEADERS,
+  IFLOW_PLUGIN_NAME,
+  IFLOW_PLUGIN_SOURCE,
+  IFLOW_PLUGIN_VERSION,
+  createIflowClient,
+  type ClientLogger,
+} from "../client.ts";
 import type { IflowResolvedConfig } from "../config.ts";
 
 function makeConfig(overrides: Partial<IflowResolvedConfig> = {}): IflowResolvedConfig {
@@ -235,5 +242,99 @@ describe("createIflowClient", () => {
     await client.webSearch("hello", 3);
     await client.webSearch("hello", 3);
     expect(counter).toBe(2);
+  });
+});
+
+describe("attribution headers", () => {
+  function expectAttribution(headers: Record<string, string>) {
+    expect(headers["IFlow-Source"]).toBe(IFLOW_PLUGIN_SOURCE);
+    expect(headers["IFlow-Source"]).toBe("openclaw");
+    expect(headers["IFlow-Integration"]).toBe(IFLOW_PLUGIN_NAME);
+    expect(headers["IFlow-Integration"]).toBe("@iflow-ai/iflow-plugin");
+    expect(headers["IFlow-Integration-Version"]).toBe(IFLOW_PLUGIN_VERSION);
+    expect(headers["IFlow-Integration-Version"]).toMatch(/^[0-9]+\.[0-9]+\.[0-9]+/);
+    // User-Agent intentionally NOT set as an attribution signal; the iFlow
+    // backend treats IFlow-* headers as the sole channel marker.
+    expect(headers["User-Agent"]).toBeUndefined();
+  }
+
+  it("ATTRIBUTION_HEADERS is the exact published shape (IFlow-* only, no User-Agent)", () => {
+    expect(ATTRIBUTION_HEADERS).toEqual({
+      "IFlow-Source": "openclaw",
+      "IFlow-Integration": "@iflow-ai/iflow-plugin",
+      "IFlow-Integration-Version": IFLOW_PLUGIN_VERSION,
+    });
+  });
+
+  it("webSearch sends attribution headers AND keeps Authorization + JSON content-type + body shape", async () => {
+    const fetchImpl = fetchMock(async () =>
+      jsonResponse({ success: true, code: "200", message: "ok", data: { organic: [], query: "x" } }),
+    );
+    const client = createIflowClient({ config: makeConfig(), logger: makeLogger(), fetchImpl });
+    await client.webSearch("hello", 3);
+
+    const [, init] = lastCall(fetchImpl);
+    const headers = init.headers as Record<string, string>;
+
+    expectAttribution(headers);
+    expect(headers.Authorization).toBe("Bearer sk-test");
+    expect(headers["Content-Type"]).toBe("application/json");
+    expect(JSON.parse(init.body as string)).toEqual({ keywords: "hello", num: 3 });
+  });
+
+  it("imageSearch sends attribution headers AND keeps Authorization + body shape", async () => {
+    const fetchImpl = fetchMock(async () =>
+      jsonResponse({ success: true, code: "200", message: "ok", data: [] }),
+    );
+    const client = createIflowClient({ config: makeConfig(), logger: makeLogger(), fetchImpl });
+    await client.imageSearch("猫", 5);
+
+    const [, init] = lastCall(fetchImpl);
+    const headers = init.headers as Record<string, string>;
+
+    expectAttribution(headers);
+    expect(headers.Authorization).toBe("Bearer sk-test");
+    expect(headers["Content-Type"]).toBe("application/json");
+    expect(JSON.parse(init.body as string)).toEqual({ keywords: "猫", num: 5 });
+  });
+
+  it("webFetch sends attribution headers AND keeps Authorization + body shape", async () => {
+    const fetchImpl = fetchMock(async () =>
+      jsonResponse({
+        success: true,
+        code: "200",
+        message: "ok",
+        data: { title: "T", url: "u", content: "C", fromCache: false },
+      }),
+    );
+    const client = createIflowClient({ config: makeConfig(), logger: makeLogger(), fetchImpl });
+    await client.webFetch("https://target");
+
+    const [, init] = lastCall(fetchImpl);
+    const headers = init.headers as Record<string, string>;
+
+    expectAttribution(headers);
+    expect(headers.Authorization).toBe("Bearer sk-test");
+    expect(headers["Content-Type"]).toBe("application/json");
+    expect(JSON.parse(init.body as string)).toEqual({ url: "https://target" });
+  });
+
+  it("attribution header values never leak the API key", async () => {
+    const fetchImpl = fetchMock(async () =>
+      jsonResponse({ success: true, code: "200", message: "ok", data: { organic: [], query: "x" } }),
+    );
+    const client = createIflowClient({
+      config: makeConfig({ apiKey: "sk-SUPER-SECRET-VALUE" }),
+      logger: makeLogger(),
+      fetchImpl,
+    });
+    await client.webSearch("q", 1);
+
+    const [, init] = lastCall(fetchImpl);
+    const headers = init.headers as Record<string, string>;
+
+    expect(headers["IFlow-Source"]).not.toContain("sk-");
+    expect(headers["IFlow-Integration"]).not.toContain("sk-");
+    expect(headers["IFlow-Integration-Version"]).not.toContain("sk-");
   });
 });

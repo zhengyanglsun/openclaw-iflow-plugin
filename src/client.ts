@@ -25,6 +25,19 @@ import type {
   RawWebSearchData,
 } from "./normalize.js";
 
+// Attribution headers — every outbound iFlow API call carries these so the
+// iFlow backend can identify requests originating from the OpenClaw
+// integration. Bump IFLOW_PLUGIN_VERSION alongside package.json#version at
+// every release (see progress doc §7.3 release runbook).
+export const IFLOW_PLUGIN_NAME = "@iflow-ai/iflow-plugin";
+export const IFLOW_PLUGIN_VERSION = "0.1.1";
+export const IFLOW_PLUGIN_SOURCE = "openclaw";
+export const ATTRIBUTION_HEADERS = {
+  "IFlow-Source": IFLOW_PLUGIN_SOURCE,
+  "IFlow-Integration": IFLOW_PLUGIN_NAME,
+  "IFlow-Integration-Version": IFLOW_PLUGIN_VERSION,
+} as const;
+
 export interface ClientLogger {
   info: (msg: string) => void;
   warn: (msg: string) => void;
@@ -139,6 +152,7 @@ export function createIflowClient(opts: CreateClientOpts): IflowClient {
       response = await fetchImpl(url, {
         method: "POST",
         headers: {
+          ...ATTRIBUTION_HEADERS,
           Authorization: `Bearer ${config.apiKey ?? ""}`,
           "Content-Type": "application/json",
           Accept: "application/json",

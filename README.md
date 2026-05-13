@@ -204,6 +204,18 @@ fields instead of the upstream shell-script interface.
 Official iFlow skill reference:
 https://github.com/iflow-ai/iflow-skills/tree/main/skills/iflow-search
 
+## Attribution headers
+
+The plugin sends non-sensitive attribution headers on every outbound
+request to the iFlow API so iFlow can identify requests coming from the
+OpenClaw integration:
+
+- `IFlow-Source: openclaw`
+- `IFlow-Integration: @iflow-ai/iflow-plugin`
+- `IFlow-Integration-Version: <plugin version>`
+
+No API key or user query content is added to these headers.
+
 ## License
 
 MIT
