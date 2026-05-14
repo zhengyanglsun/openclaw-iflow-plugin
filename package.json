@@ -1,6 +1,6 @@
 {
   "name": "@iflow-ai/iflow-plugin",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "iFlow Search plugin for OpenClaw — exposes iflow_web_search, iflow_image_search, iflow_web_fetch, and registers (best-effort) as the web_search provider 'iflow'",
   "type": "module",
   "license": "MIT",

@@ -1,18 +1,42 @@
 /**
- * Best-effort `web_search` provider for OpenClaw's managed search router.
+ * `web_search` provider implementation for OpenClaw's managed search router.
  *
- * The shape of the returned object mirrors @openclaw/brave-plugin's
- * `createBraveWebSearchProvider()` exactly, with iFlow-specific values
- * substituted. This is a REFERENCE alignment — we make no guarantee that the
- * third-party plugin contract is stable. The plugin entry wraps the use of
- * `registerWebSearchProvider` and this factory in try/catch so any signature
- * drift downgrades to tools-only mode without breaking plugin load.
+ * `createTool` returns a real tool definition whose `execute` calls the iFlow
+ * client. This mirrors the shape OpenClaw consumes in
+ * `src/web-search/runtime.ts` (it calls `provider.createTool({...})` then
+ * `definition.execute(args)`).
+ *
+ * `createContractFields` (imported dynamically at runtime from
+ * openclaw/plugin-sdk/provider-web-search-config-contract) supplies
+ * credential read/write helpers (`getCredentialValue`,
+ * `setCredentialValue`, etc). It does NOT supply `createTool`, so this
+ * file is responsible for the executable wiring.
  */
 
+import { Type, type Static } from "@sinclair/typebox";
 import type { IflowClient } from "./client.js";
 import { normalizeWebSearch } from "./normalize.js";
 
 const CREDENTIAL_PATH = "plugins.entries.iflow.config.webSearch.apiKey";
+
+const PROVIDER_DEFAULT_COUNT = 10;
+const PROVIDER_MAX_COUNT = 10;
+
+export const IflowProviderSearchSchema = Type.Object({
+  query: Type.String({
+    minLength: 1,
+    description: "Search query. Forwarded to iFlow as 'keywords'.",
+  }),
+  count: Type.Optional(
+    Type.Number({
+      minimum: 1,
+      maximum: PROVIDER_MAX_COUNT,
+      description: `Number of results (1-${PROVIDER_MAX_COUNT}). Default ${PROVIDER_DEFAULT_COUNT}. Forwarded to iFlow as 'num'.`,
+    }),
+  ),
+});
+
+export type IflowProviderSearchParams = Static<typeof IflowProviderSearchSchema>;
 
 export interface CreateProviderOpts {
   client: IflowClient;
@@ -22,6 +46,14 @@ export interface CreateProviderOpts {
     searchCredential: { type: "top-level" };
     configuredCredential: { pluginId: string };
   }) => Record<string, unknown>;
+}
+
+export interface IflowProviderToolDefinition {
+  description: string;
+  parameters: typeof IflowProviderSearchSchema;
+  execute: (
+    args: Record<string, unknown>,
+  ) => Promise<Record<string, unknown> | { error: string; message?: string }>;
 }
 
 export interface IflowWebSearchProvider extends Record<string, unknown> {
@@ -36,8 +68,7 @@ export interface IflowWebSearchProvider extends Record<string, unknown> {
   docsUrl: string;
   autoDetectOrder: number;
   credentialPath: string;
-  createTool: () => unknown;
-  runManagedWebSearch: (params: { query: string; count?: number }) => Promise<unknown>;
+  createTool: () => IflowProviderToolDefinition;
 }
 
 export function createIflowWebSearchProvider(opts: CreateProviderOpts): IflowWebSearchProvider {
@@ -62,22 +93,34 @@ export function createIflowWebSearchProvider(opts: CreateProviderOpts): IflowWeb
     docsUrl: "https://platform.iflow.cn/docs/",
     autoDetectOrder: 80,
     credentialPath: CREDENTIAL_PATH,
-    createTool: () => null,
-    /**
-     * If the host runtime invokes this entry point instead of routing through
-     * createTool() (newer SDKs are observed to do both), perform the search
-     * and return a normalized payload. This is a forward-compatibility hook —
-     * if the runtime doesn't call it, no harm done.
-     */
-    async runManagedWebSearch(params) {
-      const query = String(params.query ?? "").trim();
-      const count = typeof params.count === "number" && Number.isFinite(params.count) && params.count > 0
-        ? Math.min(10, Math.max(1, Math.floor(params.count)))
-        : 10;
-      if (!query) return { error: "missing_param", message: 'Parameter "query" is required.' };
-      const result = await client.webSearch(query, count);
-      if (!result.ok) return result.error;
-      return normalizeWebSearch(result.data, query, result.tookMs);
-    },
+    createTool: () => ({
+      description:
+        "Search the public web via iFlow Search (心流搜索). Returns titles, URLs, snippets, position, and (when available) publish date. Chinese-language results are first-class.",
+      parameters: IflowProviderSearchSchema,
+      execute: async (args) => {
+        const rawQuery = args.query;
+        if (typeof rawQuery !== "string") {
+          return { error: "missing_param", message: 'Parameter "query" is required.' };
+        }
+        const query = rawQuery.trim();
+        if (query.length === 0) {
+          return { error: "missing_param", message: 'Parameter "query" is required.' };
+        }
+        const rawCount = args.count;
+        const count =
+          typeof rawCount === "number" && Number.isFinite(rawCount) && rawCount >= 1
+            ? Math.min(PROVIDER_MAX_COUNT, Math.max(1, Math.floor(rawCount)))
+            : PROVIDER_DEFAULT_COUNT;
+        const result = await client.webSearch(query, count);
+        if (!result.ok) {
+          return result.error as unknown as { error: string; message?: string };
+        }
+        const normalized = normalizeWebSearch(result.data, query, result.tookMs);
+        if (result.fromCache) {
+          return { ...normalized, cached: true };
+        }
+        return normalized as unknown as Record<string, unknown>;
+      },
+    }),
   };
 }
