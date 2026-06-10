@@ -14,9 +14,9 @@ Connect Your AI Agent to the Real World.
 ## 3. Package
 
 - npm name: `@iflow-ai/iflow-plugin`
-- Pinned version for next patch: **`0.1.4`**
-- Current public npm version before this patch: `0.1.3`
-- Publish `0.1.4` only after maintainer approval.
+- Pinned version for current patch: **`0.1.5`**
+- Current public npm version before this patch: `0.1.4`
+- Publish `0.1.5` only after maintainer approval.
 
 ## 4. Plugin id
 
@@ -94,7 +94,7 @@ provider routing is independent.
 ## 13. Install
 
 ```bash
-openclaw plugins install @iflow-ai/iflow-plugin@0.1.4
+openclaw plugins install @iflow-ai/iflow-plugin@0.1.5
 openclaw gateway restart
 ```
 
@@ -118,14 +118,14 @@ catalog entry.
 
 The user path below was previously verified end-to-end on OpenClaw
 `2026.5.12-beta.1` with `@iflow-ai/iflow-plugin@0.1.3` against a fresh
-profile. Re-run this matrix against `0.1.4` before publishing. The API key
+profile. Re-run this matrix against `0.1.5` before publishing. The API key
 was supplied via the `IFLOW_API_KEY` env var only and **never written to
 the profile config**.
 
 | Step | Command | Observed |
 |---|---|---|
-| Fresh profile install | `openclaw --profile <fresh> plugins install @iflow-ai/iflow-plugin@0.1.4 --force` | Expected: `Installed plugin: iflow` |
-| Registry verification | `openclaw --profile <fresh> plugins inspect iflow --json` | Expected: `version: 0.1.4`; `capabilities: [{ kind: "web-search", ids: ["iflow"] }]`; `contracts.webSearchProviders: ["iflow"]`; `contracts.tools: ["iflow_web_search","iflow_image_search","iflow_web_fetch"]`; install record pins `@0.1.4`. |
+| Fresh profile install | `openclaw --profile <fresh> plugins install @iflow-ai/iflow-plugin@0.1.5 --force` | Expected: `Installed plugin: iflow` |
+| Registry verification | `openclaw --profile <fresh> plugins inspect iflow --json` | Expected: `version: 0.1.5`; `capabilities: [{ kind: "web-search", ids: ["iflow"] }]`; `contracts.webSearchProviders: ["iflow"]`; `contracts.tools: ["iflow_web_search","iflow_image_search","iflow_web_fetch"]`; install record pins `@0.1.5`. |
 | Wizard list source | direct call to `resolveSearchProviderOptions(config)` (the function `configure --section web` uses) | iFlow Search returned at expected position with `pluginId: "iflow"`, `envVars: ["IFLOW_API_KEY"]`, `credentialPath: "plugins.entries.iflow.config.webSearch.apiKey"`. 13 providers total. |
 | Live web search | env var set out-of-band; `openclaw --profile <fresh> infer web search --query "心流搜索 iflow 是什么" --limit 3 --json` | `ok: true`, `provider: "iflow"`, `results.length == 3`, no errors. |
 | Config remained clean | post-run inspection of `<profile>/openclaw.json` | `keyWrittenToConfig: false`, `toolsSearchKeyWritten: false`, provider/enabled flags intact. |
@@ -144,7 +144,7 @@ the profile config**.
   (`IFlow-Source`, `IFlow-Integration`, `IFlow-Integration-Version` only).
 - Plugin performs only HTTPS calls to documented iFlow endpoints
   (`/api/search/web`, `/api/search/image`, `/api/search/fetch`).
-- npm package is version-pinned in documentation to `0.1.4`.
+- npm package is version-pinned in documentation to `0.1.5`.
 - The plugin manifest declares a closed `configSchema`
   (`additionalProperties: false`) for `webSearch.*`.
 
@@ -163,7 +163,7 @@ the profile config**.
 
 ## 18. Review checklist
 
-- [ ] Package prepared locally at `@iflow-ai/iflow-plugin@0.1.4`; publish only after maintainer approval.
+- [ ] Package prepared locally at `@iflow-ai/iflow-plugin@0.1.5`; publish only after maintainer approval.
 - [x] `README.md` includes install, configure (wizard + manual), env var,
       smoke test, troubleshooting, security.
 - [x] `LICENSE` present (MIT).
@@ -173,7 +173,7 @@ the profile config**.
       `contracts.webSearchProviders: ["iflow"]` and `contracts.tools` for
       all three tools.
 - [x] Plugin loaded on fresh profile (`plugins inspect iflow` → loaded,
-      version 0.1.4).
+      version 0.1.5).
 - [x] Capability registry reflects `web-search` for `iflow`.
 - [x] Live web search returns `provider: "iflow"` with non-empty results.
 - [x] No secrets in repository, package, or this submission doc.
@@ -230,7 +230,8 @@ without uploading the package. **Run this before any real submission**
 and confirm the output matches the values in §21 and §15.
 
 ```bash
-clawhub package publish . --family code-plugin --dry-run
+clawhub package pack .
+clawhub package publish /path/to/iflow-ai-iflow-plugin-0.1.5.tgz --family code-plugin --source-repo https://github.com/zhengyanglsun/openclaw-iflow-plugin --source-commit <HEAD> --dry-run
 ```
 
 What the dry-run validates locally (no upload):
