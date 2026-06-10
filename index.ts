@@ -12,16 +12,12 @@
  *
  * Both modes share the same HTTP client and normalize layer.
  *
- * Note on registration timing:
- *   OpenClaw's plugin loader signature is `register(api) => void` (sync, not
- *   awaited). The loader finalizes the plugin registry immediately after
- *   `register` returns. Any provider registration triggered from an async
- *   promise spawned by `register` will be flushed AFTER the registry is
- *   sealed and therefore will NOT be visible to web_search runtime
- *   resolution. So the SDK subpath import is resolved here at module init via
- *   a synchronous `createRequire` call and the resulting factory is cached in
- *   `providerSdkFactory`. `register` then performs the provider registration
- *   synchronously.
+ * Design notes (aligned with openclaw-tavily):
+ *   - Provider and explicit tools are registered in a single register() call.
+ *   - Each registerTool receives a factory `(ctx) => toolDef` and an explicit
+ *     `{ name }` opts object, matching the Tavily registration pattern.
+ *   - The provider SDK import is resolved lazily inside registerProviderSync
+ *     to avoid blocking the entire plugin load if the SDK subpath is missing.
  */
 
 import { createRequire } from "node:module";
@@ -59,38 +55,11 @@ const PLUGIN_ID = "iflow";
 
 type ProviderSdkFactory = Parameters<typeof createIflowWebSearchProvider>[0]["createContractFields"];
 
-/**
- * Resolved at module init (before any `register(api)` call). Holds the
- * SDK-supplied contract-fields factory if importable, otherwise null.
- * `null` keeps the plugin in tools-only mode for that runtime (best-effort).
- *
- * We use `createRequire` (synchronous) rather than `await import(...)` because
- * OpenClaw's plugin loader (jiti) loads plugin entries synchronously and does
- * not support modules with top-level await. Node 22.x supports `require(esm)`
- * for ESM modules without top-level await, which the OpenClaw SDK subpath
- * satisfies.
- */
-const providerSdkFactory: ProviderSdkFactory | null = resolveProviderSdkFactory();
-
-function resolveProviderSdkFactory(): ProviderSdkFactory | null {
-  try {
-    const requireSdk = createRequire(import.meta.url);
-    const sdk = requireSdk("openclaw/plugin-sdk/provider-web-search-config-contract") as {
-      createWebSearchProviderContractFields?: unknown;
-    };
-    const factory = sdk.createWebSearchProviderContractFields;
-    return typeof factory === "function" ? (factory as ProviderSdkFactory) : null;
-  } catch {
-    return null;
-  }
-}
-
 const iflowPlugin = {
   id: PLUGIN_ID,
   name: "iFlow Search",
   description:
     "iFlow Search (心流搜索) — web search, image search, and web content fetch tools for OpenClaw agents.",
-  kind: "tools" as const,
 
   register(api: PluginApi): void {
     const cfg = resolveConfig(api.config ?? api.pluginConfig);
@@ -103,11 +72,11 @@ const iflowPlugin = {
       })`,
     );
 
-    // Tier 1 — tools mode (stable baseline)
-    registerTools(api);
-
-    // Tier 2 — provider mode (best-effort, synchronous)
+    // --- Provider mode (best-effort, synchronous) ---
     registerProviderSync(api);
+
+    // --- Tools mode (stable baseline) ---
+    registerTools(api);
 
     api.registerService({
       id: PLUGIN_ID,
@@ -132,6 +101,23 @@ function registerTools(api: PluginApi): void {
   });
 }
 
+/**
+ * Resolve the SDK-supplied contract-fields factory at call time (not module
+ * init) to avoid blocking the plugin load if the subpath is missing.
+ */
+function resolveProviderSdkFactory(): ProviderSdkFactory | null {
+  try {
+    const requireSdk = createRequire(import.meta.url);
+    const sdk = requireSdk("openclaw/plugin-sdk/provider-web-search-config-contract") as {
+      createWebSearchProviderContractFields?: unknown;
+    };
+    const factory = sdk.createWebSearchProviderContractFields;
+    return typeof factory === "function" ? (factory as ProviderSdkFactory) : null;
+  } catch {
+    return null;
+  }
+}
+
 function registerProviderSync(api: PluginApi): void {
   if (typeof api.registerWebSearchProvider !== "function") {
     api.logger.info(
@@ -139,20 +125,31 @@ function registerProviderSync(api: PluginApi): void {
     );
     return;
   }
+
+  const providerSdkFactory = resolveProviderSdkFactory();
   if (!providerSdkFactory) {
     api.logger.info(
       "iflow: provider mode unavailable, staying in tools-only mode (openclaw/plugin-sdk/provider-web-search-config-contract not importable)",
     );
     return;
   }
-  const provider = createIflowWebSearchProvider({
-    config: api.config,
-    pluginConfig: api.pluginConfig,
-    logger: api.logger,
-    createContractFields: providerSdkFactory,
-  });
-  api.registerWebSearchProvider(provider);
-  api.logger.info("iflow: registered as web_search provider (best-effort)");
+
+  try {
+    const provider = createIflowWebSearchProvider({
+      config: api.config,
+      pluginConfig: api.pluginConfig,
+      logger: api.logger,
+      createContractFields: providerSdkFactory,
+    });
+    api.registerWebSearchProvider(provider);
+    api.logger.info("iflow: registered as web_search provider (best-effort)");
+  } catch (err) {
+    api.logger.warn(
+      `iflow: provider registration failed, staying in tools-only mode: ${
+        err instanceof Error ? err.message : String(err)
+      }`,
+    );
+  }
 }
 
 export default iflowPlugin;

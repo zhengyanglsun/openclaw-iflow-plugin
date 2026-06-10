@@ -99,7 +99,7 @@ export interface OpenClawPluginApiLike {
 function ok(payload: unknown): OpenClawToolResult {
   return {
     content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
-    details: {},
+    details: (payload ?? {}) as Record<string, unknown>,
   };
 }
 
