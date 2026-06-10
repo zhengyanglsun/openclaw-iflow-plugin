@@ -26,7 +26,7 @@
 
 import { createRequire } from "node:module";
 
-import { resolveConfig, redactApiKey } from "./src/config.js";
+import { resolveConfig } from "./src/config.js";
 import { createIflowClient, type IflowClient } from "./src/client.js";
 import {
   createImageSearchTool,
@@ -45,7 +45,10 @@ interface PluginApi {
     warn: (msg: string) => void;
     error: (msg: string) => void;
   };
-  registerTool: (tool: unknown, opts?: { source?: string }) => void;
+  registerTool: (
+    tool: unknown,
+    opts?: { name?: string; names?: string[]; optional?: boolean },
+  ) => void;
   registerService: (svc: { id: string; start: () => void; stop: () => void }) => void;
   /** Best-effort. Not present on every runtime. */
   registerWebSearchProvider?: (provider: unknown) => void;
@@ -90,25 +93,14 @@ const iflowPlugin = {
 
   register(api: PluginApi): void {
     const cfg = resolveConfig(api.pluginConfig);
-
-    if (!cfg.apiKey) {
-      api.logger.warn(
-        "iflow: no API key found. Set IFLOW_API_KEY or plugins.entries.iflow.config.webSearch.apiKey. Plugin idle.",
-      );
-      api.registerService({
-        id: PLUGIN_ID,
-        start: () => api.logger.info("iflow: idle (no API key)"),
-        stop: () => {},
-      });
-      return;
-    }
-
     const client = createIflowClient({ config: cfg, logger: api.logger });
 
     api.logger.info(
       `iflow: initialized (baseUrl=${cfg.baseUrl}, timeout=${Math.round(
         cfg.timeoutMs / 1000,
-      )}s, cacheTtl=${Math.round(cfg.cacheTtlMs / 60_000)}min, apiKey=${redactApiKey(cfg.apiKey)})`,
+      )}s, cacheTtl=${Math.round(cfg.cacheTtlMs / 60_000)}min, iFlow API key ${
+        cfg.apiKey ? "configured" : "not configured"
+      })`,
     );
 
     // Tier 1 — tools mode (stable baseline)
@@ -129,9 +121,9 @@ const iflowPlugin = {
 };
 
 function registerTools(api: PluginApi, client: IflowClient): void {
-  api.registerTool(createWebSearchTool(client), { source: PLUGIN_ID });
-  api.registerTool(createImageSearchTool(client), { source: PLUGIN_ID });
-  api.registerTool(createWebFetchTool(client), { source: PLUGIN_ID });
+  api.registerTool(createWebSearchTool(client), { name: "iflow_web_search" });
+  api.registerTool(createImageSearchTool(client), { name: "iflow_image_search" });
+  api.registerTool(createWebFetchTool(client), { name: "iflow_web_fetch" });
 }
 
 function registerProviderSync(api: PluginApi, client: IflowClient): void {

@@ -1,7 +1,7 @@
-# ClawHub submission — iFlow Search
+# ClawHub listing — iFlow Search
 
-> Draft. Not yet submitted. Status fields below reflect the package state at
-> the time this document was generated.
+> Published on ClawHub:
+> https://clawhub.ai/plugins/@iflow-ai/iflow-plugin
 
 ## 1. Plugin name
 
@@ -14,9 +14,9 @@ Connect Your AI Agent to the Real World.
 ## 3. Package
 
 - npm name: `@iflow-ai/iflow-plugin`
-- Pinned version for submission: **`0.1.3`**
-- Public on the npm registry (`npm view @iflow-ai/iflow-plugin version` → `0.1.3`)
-- npm dist-tags: `latest = 0.1.3`, `beta = 0.1.3`
+- Pinned version for next patch: **`0.1.4`**
+- Current public npm version before this patch: `0.1.3`
+- Publish `0.1.4` only after maintainer approval.
 
 ## 4. Plugin id
 
@@ -62,11 +62,14 @@ Chinese-first index with strong coverage of CN-language sources.
 ## 11. Authentication
 
 - Env var: **`IFLOW_API_KEY`**
+- Optional base URL env var: **`IFLOW_BASE_URL`** (defaults to
+  `https://platform.iflow.cn`)
 - Config path: `plugins.entries.iflow.config.webSearch.apiKey` (string or
   OpenClaw `SecretRef` object)
 - Where to get a key: https://platform.iflow.cn
-- The plugin redacts the key in logs (`apiKey=***`) and never sends it in
-  attribution headers.
+- The plugin does not log API keys or derived key material. Startup logs
+  only state whether the iFlow API key is configured.
+- The key is never sent in attribution headers.
 
 ## 12. Routing configuration
 
@@ -91,7 +94,7 @@ provider routing is independent.
 ## 13. Install
 
 ```bash
-openclaw plugins install @iflow-ai/iflow-plugin@0.1.3
+openclaw plugins install @iflow-ai/iflow-plugin@0.1.4
 openclaw gateway restart
 ```
 
@@ -113,19 +116,20 @@ catalog entry.
 
 ## 15. Smoke-test proof (locally verified)
 
-The user path below was verified end-to-end on OpenClaw `2026.5.12-beta.1`
-with `@iflow-ai/iflow-plugin@0.1.3` against a fresh profile. The API key
+The user path below was previously verified end-to-end on OpenClaw
+`2026.5.12-beta.1` with `@iflow-ai/iflow-plugin@0.1.3` against a fresh
+profile. Re-run this matrix against `0.1.4` before publishing. The API key
 was supplied via the `IFLOW_API_KEY` env var only and **never written to
 the profile config**.
 
 | Step | Command | Observed |
 |---|---|---|
-| Fresh profile install | `openclaw --profile <fresh> plugins install @iflow-ai/iflow-plugin@0.1.3 --force` | `Installed plugin: iflow` |
-| Registry verification | `openclaw --profile <fresh> plugins inspect iflow --json` | `version: 0.1.3`; `capabilities: [{ kind: "web-search", ids: ["iflow"] }]`; `contracts.webSearchProviders: ["iflow"]`; `contracts.tools: ["iflow_web_search","iflow_image_search","iflow_web_fetch"]`; install record pins `@0.1.3`. |
+| Fresh profile install | `openclaw --profile <fresh> plugins install @iflow-ai/iflow-plugin@0.1.4 --force` | Expected: `Installed plugin: iflow` |
+| Registry verification | `openclaw --profile <fresh> plugins inspect iflow --json` | Expected: `version: 0.1.4`; `capabilities: [{ kind: "web-search", ids: ["iflow"] }]`; `contracts.webSearchProviders: ["iflow"]`; `contracts.tools: ["iflow_web_search","iflow_image_search","iflow_web_fetch"]`; install record pins `@0.1.4`. |
 | Wizard list source | direct call to `resolveSearchProviderOptions(config)` (the function `configure --section web` uses) | iFlow Search returned at expected position with `pluginId: "iflow"`, `envVars: ["IFLOW_API_KEY"]`, `credentialPath: "plugins.entries.iflow.config.webSearch.apiKey"`. 13 providers total. |
-| Live web search | `IFLOW_API_KEY=… openclaw --profile <fresh> infer web search --query "心流搜索 iflow 是什么" --limit 3 --json` | `ok: true`, `provider: "iflow"`, `results.length == 3`, no errors. |
+| Live web search | env var set out-of-band; `openclaw --profile <fresh> infer web search --query "心流搜索 iflow 是什么" --limit 3 --json` | `ok: true`, `provider: "iflow"`, `results.length == 3`, no errors. |
 | Config remained clean | post-run inspection of `<profile>/openclaw.json` | `keyWrittenToConfig: false`, `toolsSearchKeyWritten: false`, provider/enabled flags intact. |
-| Key handling | env var staged in 0600 tempfile, used once, file removed, `unset IFLOW_API_KEY` | No API key was written to the OpenClaw profile config. The temporary key file was removed after the smoke test. `IFLOW_API_KEY` was unset after the smoke test. Plugin logs the key as `***` (redacted at source). |
+| Key handling | env var staged in 0600 tempfile, used once, file removed, `unset IFLOW_API_KEY` | No API key was written to the OpenClaw profile config. The temporary key file was removed after the smoke test. `IFLOW_API_KEY` was unset after the smoke test. Plugin logs only key configured/not-configured status. |
 
 ## 16. Security notes
 
@@ -135,12 +139,12 @@ the profile config**.
 - Outbound traffic is restricted to `${baseUrl}` (default
   `https://platform.iflow.cn`); `baseUrl` is configurable for trusted
   proxies / on-prem mirrors only.
-- API key is redacted in plugin logs.
+- API keys and derived key material are not logged.
 - No credential is sent in attribution headers
   (`IFlow-Source`, `IFlow-Integration`, `IFlow-Integration-Version` only).
 - Plugin performs only HTTPS calls to documented iFlow endpoints
   (`/api/search/web`, `/api/search/image`, `/api/search/fetch`).
-- npm package is version-pinned in documentation to `0.1.3`.
+- npm package is version-pinned in documentation to `0.1.4`.
 - The plugin manifest declares a closed `configSchema`
   (`additionalProperties: false`) for `webSearch.*`.
 
@@ -159,7 +163,7 @@ the profile config**.
 
 ## 18. Review checklist
 
-- [x] Package published on npm at `@iflow-ai/iflow-plugin@0.1.3`.
+- [ ] Package prepared locally at `@iflow-ai/iflow-plugin@0.1.4`; publish only after maintainer approval.
 - [x] `README.md` includes install, configure (wizard + manual), env var,
       smoke test, troubleshooting, security.
 - [x] `LICENSE` present (MIT).
@@ -169,7 +173,7 @@ the profile config**.
       `contracts.webSearchProviders: ["iflow"]` and `contracts.tools` for
       all three tools.
 - [x] Plugin loaded on fresh profile (`plugins inspect iflow` → loaded,
-      version 0.1.3).
+      version 0.1.4).
 - [x] Capability registry reflects `web-search` for `iflow`.
 - [x] Live web search returns `provider: "iflow"` with non-empty results.
 - [x] No secrets in repository, package, or this submission doc.

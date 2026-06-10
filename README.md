@@ -21,21 +21,22 @@ through iFlow with a single config line.
 - **Chinese-first index** with strong coverage of CN-language sources.
 
 This is an OpenClaw **community plugin**, not an officially bundled
-provider. Distribution is via npm; submission to ClawHub is planned.
+provider. Distribution is via npm and ClawHub:
+https://clawhub.ai/plugins/@iflow-ai/iflow-plugin
 
 ## Install
 
 Pin to the latest known-good version:
 
 ```bash
-openclaw plugins install @iflow-ai/iflow-plugin@0.1.3
+openclaw plugins install @iflow-ai/iflow-plugin@0.1.4
 openclaw gateway restart
 ```
 
 > Pinning matters: on OpenClaw's `beta` update channel, an unpinned
 > `@iflow-ai/iflow-plugin` may be rewritten to `@beta`. `0.1.2` and earlier
 > have a provider-registration timing bug and **should not be used** —
-> always use `0.1.3` or later. Verify with:
+> always use `0.1.4` or later. Verify with:
 >
 > ```bash
 > openclaw plugins inspect iflow --json | grep -E 'resolvedVersion|version'
@@ -79,8 +80,8 @@ profile; `~/.openclaw-<name>/openclaw.json` for named profiles):
         enabled: true,
         config: {
           webSearch: {
-            apiKey: "sk-REDACTED",                // string (LEAST PREFERRED — see SecretRef below)
-            baseUrl: "https://platform.iflow.cn", // optional
+            apiKey: "YOUR_IFLOW_API_KEY",         // string (LEAST PREFERRED — see SecretRef below)
+            baseUrl: "https://platform.iflow.cn", // optional; env fallback: IFLOW_BASE_URL
             timeoutSeconds: 30,                   // optional, default 30
             cacheTtlMinutes: 15                   // optional, 0 disables cache
           }
@@ -129,7 +130,7 @@ Skip `webSearch.apiKey` in config and export an env var. The gateway and
 local CLI both pick it up:
 
 ```bash
-export IFLOW_API_KEY=sk-REDACTED
+read -s -p 'IFLOW_API_KEY: ' IFLOW_API_KEY; export IFLOW_API_KEY; echo
 openclaw gateway restart
 ```
 
@@ -151,13 +152,22 @@ This is the safest option for shared / committed config files.
 | Path | Type | Default | Notes |
 |---|---|---|---|
 | `plugins.entries.iflow.config.webSearch.apiKey` | string \| SecretRef | — | Falls back to `IFLOW_API_KEY` env var. |
-| `plugins.entries.iflow.config.webSearch.baseUrl` | string | `https://platform.iflow.cn` | For trusted proxies / on-prem mirrors. |
+| `plugins.entries.iflow.config.webSearch.baseUrl` | string | `https://platform.iflow.cn` | For trusted proxies / on-prem mirrors. Falls back to `IFLOW_BASE_URL` env var. |
 | `plugins.entries.iflow.config.webSearch.timeoutSeconds` | number | `30` | Per-request HTTP timeout. |
 | `plugins.entries.iflow.config.webSearch.cacheTtlMinutes` | number | `15` | In-memory cache TTL. Set `0` to disable. |
 | `tools.web.search.provider` | string | — | Set to `"iflow"` to route managed `web_search` here. |
 | `tools.web.search.enabled` | boolean | — | Master toggle for managed web search. |
 
-Env var: **`IFLOW_API_KEY`**.
+Env vars: **`IFLOW_API_KEY`**; optional **`IFLOW_BASE_URL`** defaults to
+`https://platform.iflow.cn`.
+
+## OpenClaw integration boundaries
+
+- `iflow` can be selected as the managed OpenClaw `web_search` provider.
+- `iflow_web_fetch` is an explicit plugin tool. It does **not** replace
+  OpenClaw's default keyless `web_fetch`.
+- `iflow_image_search` is an explicit plugin tool. It does **not** add a
+  new top-level OpenClaw image-search abstraction.
 
 ## Smoke test
 
@@ -167,14 +177,12 @@ After install + configure, verify end-to-end with the local CLI:
 # Pass the key via env var only — do NOT inline a real key here, since
 # that records it in your shell history. Prefer one of:
 #   read -s -p 'IFLOW_API_KEY: ' IFLOW_API_KEY; export IFLOW_API_KEY; echo
-#   IFLOW_API_KEY="$(security find-generic-password -w -s iflow)"  # macOS keychain
-#   IFLOW_API_KEY="$(cat ~/.config/iflow.key)"                     # 0600 file
+#   Load it from your OS keychain or a 0600 file, then export it for this shell.
 openclaw infer web search --query "OpenClaw plugin" --limit 3 --json
 ```
 
-The example value `sk-REDACTED` is illustrative only — substitute your real
-key via one of the methods above and `unset IFLOW_API_KEY` (and remove any
-tempfile) when done.
+Provide your real key via one of the non-history-leaking methods above and
+`unset IFLOW_API_KEY` (and remove any tempfile) when done.
 
 Expected output: `provider` is `"iflow"`, `outputs[0].result.results` has 3
 non-empty entries, and no `fallback` / `missing_api_key` errors.
@@ -274,8 +282,8 @@ Returns:
   No API key or user query content is included in them. See
   [Attribution headers](#attribution-headers) below for the exact header
   list and meanings.
-- The plugin logs the API key as `***` when it loads — it does not write
-  the key to any log file.
+- The plugin does not log API keys or derived key material. Startup logs
+  only state whether the iFlow API key is configured.
 - Outbound traffic is restricted to `${baseUrl}` (default
   `https://platform.iflow.cn`).
 
@@ -283,8 +291,8 @@ Returns:
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| `configure --section web` doesn't show iFlow Search | Plugin not installed | Run `openclaw plugins install @iflow-ai/iflow-plugin@0.1.3` first, then `configure`. |
-| `plugins inspect iflow` reports `version: 0.1.2` | Old version installed before the registration fix | Reinstall pinned: `openclaw plugins install @iflow-ai/iflow-plugin@0.1.3 --force`. |
+| `configure --section web` doesn't show iFlow Search | Plugin not installed | Run `openclaw plugins install @iflow-ai/iflow-plugin@0.1.4` first, then `configure`. |
+| `plugins inspect iflow` reports `version: 0.1.2` | Old version installed before the registration fix | Reinstall pinned: `openclaw plugins install @iflow-ai/iflow-plugin@0.1.4 --force`. |
 | `web_search` falls back to another provider | `tools.web.search.provider` not set | Set it to `"iflow"`, restart gateway. |
 | `missing_api_key` on every call | `IFLOW_API_KEY` not exported, or config has wrong path | Export the env var **before** restarting the gateway, or set `plugins.entries.iflow.config.webSearch.apiKey`. |
 | Gateway log says "registerWebSearchProvider not exposed" or "provider mode unavailable" | Older runtime does not expose the managed-provider registration API | No action required — the plugin **automatically falls back to tools-only mode**, and `iflow_web_search` / `iflow_image_search` / `iflow_web_fetch` keep working. To get managed `web_search` routing through iFlow, upgrade to an OpenClaw build that exposes `api.registerWebSearchProvider`. |
@@ -301,11 +309,10 @@ npm test              # vitest (mocked fetch, no live API calls)
 # Optional: live probe of all three endpoints. Reads IFLOW_API_KEY from env.
 # Set the env var via a non-history-leaking method (see "Smoke test" above):
 #   read -s -p 'IFLOW_API_KEY: ' IFLOW_API_KEY; export IFLOW_API_KEY; echo
-# `sk-REDACTED` below is a placeholder — do NOT inline a real key.
-IFLOW_API_KEY=sk-REDACTED npm run smoke
-IFLOW_API_KEY=sk-REDACTED npm run smoke web
-IFLOW_API_KEY=sk-REDACTED npm run smoke image
-IFLOW_API_KEY=sk-REDACTED npm run smoke fetch
+npm run smoke
+npm run smoke web
+npm run smoke image
+npm run smoke fetch
 # When done: unset IFLOW_API_KEY
 ```
 
@@ -313,7 +320,7 @@ To exercise the plugin inside a real OpenClaw gateway from a local build:
 
 ```bash
 npm pack
-openclaw plugins install npm-pack:./iflow-ai-iflow-plugin-0.1.3.tgz
+openclaw plugins install npm-pack:./iflow-ai-iflow-plugin-0.1.4.tgz
 openclaw gateway restart
 openclaw plugins inspect iflow --runtime --json
 ```
@@ -347,7 +354,7 @@ OpenClaw integration:
 |---|---|---|
 | `IFlow-Source` | `openclaw` | Identifies the originating runtime (OpenClaw). |
 | `IFlow-Integration` | `@iflow-ai/iflow-plugin` | Identifies the integration package name. |
-| `IFlow-Integration-Version` | the installed plugin version (e.g. `0.1.3`) | Lets iFlow attribute usage / debug per integration release. |
+| `IFlow-Integration-Version` | the installed plugin version (e.g. `0.1.4`) | Lets iFlow attribute usage / debug per integration release. |
 
 No API key, user query, or request body content is added to these
 attribution headers. The actual API key is sent only via the standard

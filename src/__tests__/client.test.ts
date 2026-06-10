@@ -11,7 +11,7 @@ import type { IflowResolvedConfig } from "../config.ts";
 
 function makeConfig(overrides: Partial<IflowResolvedConfig> = {}): IflowResolvedConfig {
   return {
-    apiKey: "sk-test",
+    apiKey: "test-api-key",
     baseUrl: "https://platform.example",
     timeoutMs: 5_000,
     cacheTtlMs: 0,
@@ -68,7 +68,7 @@ describe("createIflowClient", () => {
     expect(url).toBe("https://platform.example/api/search/webSearch");
     expect(init.method).toBe("POST");
     const headers = init.headers as Record<string, string>;
-    expect(headers.Authorization).toBe("Bearer sk-test");
+    expect(headers.Authorization).toBe("Bearer test-api-key");
     expect(headers["Content-Type"]).toBe("application/json");
     expect(JSON.parse(init.body as string)).toEqual({ keywords: "hello", num: 3 });
   });
@@ -105,7 +105,7 @@ describe("createIflowClient", () => {
     const fetchImpl = fetchMock(async () => new Response("Unauthorized", { status: 401 }));
     const logger = makeLogger();
     const client = createIflowClient({
-      config: makeConfig({ apiKey: "sk-SUPER-SECRET-VALUE" }),
+      config: makeConfig({ apiKey: "sensitive-test-api-key" }),
       logger,
       fetchImpl,
     });
@@ -117,8 +117,8 @@ describe("createIflowClient", () => {
     ]
       .flat()
       .join("\n");
-    expect(allLogs).not.toContain("sk-SUPER-SECRET-VALUE");
-    if (!res.ok) expect(JSON.stringify(res.error)).not.toContain("sk-SUPER-SECRET-VALUE");
+    expect(allLogs).not.toContain("sensitive-test-api-key");
+    if (!res.ok) expect(JSON.stringify(res.error)).not.toContain("sensitive-test-api-key");
   });
 
   it("returns network_timeout when fetch aborts", async () => {
@@ -277,7 +277,7 @@ describe("attribution headers", () => {
     const headers = init.headers as Record<string, string>;
 
     expectAttribution(headers);
-    expect(headers.Authorization).toBe("Bearer sk-test");
+    expect(headers.Authorization).toBe("Bearer test-api-key");
     expect(headers["Content-Type"]).toBe("application/json");
     expect(JSON.parse(init.body as string)).toEqual({ keywords: "hello", num: 3 });
   });
@@ -293,7 +293,7 @@ describe("attribution headers", () => {
     const headers = init.headers as Record<string, string>;
 
     expectAttribution(headers);
-    expect(headers.Authorization).toBe("Bearer sk-test");
+    expect(headers.Authorization).toBe("Bearer test-api-key");
     expect(headers["Content-Type"]).toBe("application/json");
     expect(JSON.parse(init.body as string)).toEqual({ keywords: "猫", num: 5 });
   });
@@ -314,7 +314,7 @@ describe("attribution headers", () => {
     const headers = init.headers as Record<string, string>;
 
     expectAttribution(headers);
-    expect(headers.Authorization).toBe("Bearer sk-test");
+    expect(headers.Authorization).toBe("Bearer test-api-key");
     expect(headers["Content-Type"]).toBe("application/json");
     expect(JSON.parse(init.body as string)).toEqual({ url: "https://target" });
   });
@@ -324,7 +324,7 @@ describe("attribution headers", () => {
       jsonResponse({ success: true, code: "200", message: "ok", data: { organic: [], query: "x" } }),
     );
     const client = createIflowClient({
-      config: makeConfig({ apiKey: "sk-SUPER-SECRET-VALUE" }),
+      config: makeConfig({ apiKey: "sensitive-test-api-key" }),
       logger: makeLogger(),
       fetchImpl,
     });
@@ -333,8 +333,8 @@ describe("attribution headers", () => {
     const [, init] = lastCall(fetchImpl);
     const headers = init.headers as Record<string, string>;
 
-    expect(headers["IFlow-Source"]).not.toContain("sk-");
-    expect(headers["IFlow-Integration"]).not.toContain("sk-");
-    expect(headers["IFlow-Integration-Version"]).not.toContain("sk-");
+    expect(headers["IFlow-Source"]).not.toContain("sensitive-test-api-key");
+    expect(headers["IFlow-Integration"]).not.toContain("sensitive-test-api-key");
+    expect(headers["IFlow-Integration-Version"]).not.toContain("sensitive-test-api-key");
   });
 });

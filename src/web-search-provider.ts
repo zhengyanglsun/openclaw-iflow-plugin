@@ -88,7 +88,7 @@ export function createIflowWebSearchProvider(opts: CreateProviderOpts): IflowWeb
     onboardingScopes: ["text-inference"],
     credentialLabel: "iFlow API key",
     envVars: ["IFLOW_API_KEY"],
-    placeholder: "sk-...",
+    placeholder: "Enter iFlow API key",
     signupUrl: "https://platform.iflow.cn",
     docsUrl: "https://platform.iflow.cn/docs/",
     autoDetectOrder: 80,

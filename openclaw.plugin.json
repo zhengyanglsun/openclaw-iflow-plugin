@@ -2,7 +2,7 @@
   "id": "iflow",
   "name": "iFlow Search",
   "description": "iFlow Search (心流搜索) — Chinese-first web search, image search, and web content fetch. Exposes iflow_web_search, iflow_image_search, iflow_web_fetch, and registers as the 'iflow' web_search provider when the runtime supports it.",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "skills": ["./skills"],
   "activation": { "onStartup": false },
   "providerAuthEnvVars": { "iflow": ["IFLOW_API_KEY"] },
@@ -29,7 +29,7 @@
           },
           "baseUrl": {
             "type": ["string", "object"],
-            "description": "Override the iFlow API base URL. Defaults to https://platform.iflow.cn."
+            "description": "Override the iFlow API base URL. Falls back to IFLOW_BASE_URL, then defaults to https://platform.iflow.cn."
           },
           "timeoutSeconds": {
             "type": "number",
@@ -48,11 +48,11 @@
       "label": "iFlow API Key",
       "help": "iFlow Search API key. Falls back to the IFLOW_API_KEY environment variable.",
       "sensitive": true,
-      "placeholder": "sk-..."
+      "placeholder": "Enter iFlow API key"
     },
     "webSearch.baseUrl": {
       "label": "iFlow Base URL",
-      "help": "Optional base URL override for trusted proxies. Defaults to https://platform.iflow.cn.",
+      "help": "Optional base URL override for trusted proxies. Falls back to IFLOW_BASE_URL, then defaults to https://platform.iflow.cn.",
       "advanced": true
     },
     "webSearch.timeoutSeconds": {
