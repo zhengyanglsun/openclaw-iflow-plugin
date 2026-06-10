@@ -29,14 +29,13 @@ https://clawhub.ai/plugins/@iflow-ai/iflow-plugin
 Pin to the latest known-good version:
 
 ```bash
-openclaw plugins install @iflow-ai/iflow-plugin@0.1.4
-openclaw gateway restart
+openclaw plugins install @iflow-ai/iflow-plugin@0.1.5
 ```
 
 > Pinning matters: on OpenClaw's `beta` update channel, an unpinned
 > `@iflow-ai/iflow-plugin` may be rewritten to `@beta`. `0.1.2` and earlier
 > have a provider-registration timing bug and **should not be used** —
-> always use `0.1.4` or later. Verify with:
+> always use `0.1.5` or later. Verify with:
 >
 > ```bash
 > openclaw plugins inspect iflow --json | grep -E 'resolvedVersion|version'
@@ -291,8 +290,8 @@ Returns:
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| `configure --section web` doesn't show iFlow Search | Plugin not installed | Run `openclaw plugins install @iflow-ai/iflow-plugin@0.1.4` first, then `configure`. |
-| `plugins inspect iflow` reports `version: 0.1.2` | Old version installed before the registration fix | Reinstall pinned: `openclaw plugins install @iflow-ai/iflow-plugin@0.1.4 --force`. |
+| `configure --section web` doesn't show iFlow Search | Plugin not installed | Run `openclaw plugins install @iflow-ai/iflow-plugin@0.1.5` first, then `configure`. |
+| `plugins inspect iflow` reports `version: 0.1.2` | Old version installed before the registration fix | Reinstall pinned: `openclaw plugins install @iflow-ai/iflow-plugin@0.1.5 --force`. |
 | `web_search` falls back to another provider | `tools.web.search.provider` not set | Set it to `"iflow"`, restart gateway. |
 | `missing_api_key` on every call | `IFLOW_API_KEY` not exported, or config has wrong path | Export the env var **before** restarting the gateway, or set `plugins.entries.iflow.config.webSearch.apiKey`. |
 | Gateway log says "registerWebSearchProvider not exposed" or "provider mode unavailable" | Older runtime does not expose the managed-provider registration API | No action required — the plugin **automatically falls back to tools-only mode**, and `iflow_web_search` / `iflow_image_search` / `iflow_web_fetch` keep working. To get managed `web_search` routing through iFlow, upgrade to an OpenClaw build that exposes `api.registerWebSearchProvider`. |
@@ -320,7 +319,7 @@ To exercise the plugin inside a real OpenClaw gateway from a local build:
 
 ```bash
 npm pack
-openclaw plugins install npm-pack:./iflow-ai-iflow-plugin-0.1.4.tgz
+openclaw plugins install npm-pack:./iflow-ai-iflow-plugin-0.1.5.tgz
 openclaw gateway restart
 openclaw plugins inspect iflow --runtime --json
 ```
@@ -354,7 +353,7 @@ OpenClaw integration:
 |---|---|---|
 | `IFlow-Source` | `openclaw` | Identifies the originating runtime (OpenClaw). |
 | `IFlow-Integration` | `@iflow-ai/iflow-plugin` | Identifies the integration package name. |
-| `IFlow-Integration-Version` | the installed plugin version (e.g. `0.1.4`) | Lets iFlow attribute usage / debug per integration release. |
+| `IFlow-Integration-Version` | the installed plugin version (e.g. `0.1.5`) | Lets iFlow attribute usage / debug per integration release. |
 
 No API key, user query, or request body content is added to these
 attribution headers. The actual API key is sent only via the standard
