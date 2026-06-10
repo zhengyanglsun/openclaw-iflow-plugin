@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createIflowWebSearchProvider } from "../web-search-provider.ts";
 import type { IflowClient } from "../client.ts";
 
@@ -36,6 +36,13 @@ function stubContractFields(): Record<string, unknown> {
 }
 
 describe("createIflowWebSearchProvider", () => {
+  const priorFetch = globalThis.fetch;
+
+  afterEach(() => {
+    globalThis.fetch = priorFetch;
+    vi.restoreAllMocks();
+  });
+
   it("exposes the expected metadata + createTool", () => {
     const provider = createIflowWebSearchProvider({
       client: mockClient(),
@@ -155,5 +162,48 @@ describe("createIflowWebSearchProvider", () => {
     const tool = provider.createTool();
     const result = (await tool.execute({ query: "x" })) as Record<string, unknown>;
     expect(result.cached).toBe(true);
+  });
+
+  it("late-binds provider execution to the runtime config snapshot", async () => {
+    const fetchImpl = vi.fn(async () =>
+      Response.json({
+        success: true,
+        code: "200",
+        message: "ok",
+        data: { query: "x", organic: [] },
+      }),
+    );
+    globalThis.fetch = fetchImpl as typeof globalThis.fetch;
+
+    const provider = createIflowWebSearchProvider({
+      logger: {
+        info: vi.fn(),
+        warn: vi.fn(),
+        error: vi.fn(),
+      },
+      createContractFields: stubContractFields,
+    });
+
+    const tool = provider.createTool({
+      runtimeConfig: {
+        plugins: {
+          entries: {
+            iflow: {
+              config: {
+                webSearch: {
+                  apiKey: "runtime-test-api-key",
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+    await tool.execute({ query: "x" });
+
+    const init = (fetchImpl.mock.calls as unknown as Array<[unknown, RequestInit]>)[0]?.[1];
+    expect(new Headers(init?.headers).get("Authorization")).toBe(
+      "Bearer runtime-test-api-key",
+    );
   });
 });

@@ -19,6 +19,17 @@ export interface IflowResolvedConfig {
   cacheTtlMs: number;
 }
 
+export interface IflowToolConfigContext {
+  config?: Record<string, unknown>;
+  runtimeConfig?: Record<string, unknown>;
+  getRuntimeConfig?: () => Record<string, unknown> | undefined;
+}
+
+export interface IflowPluginApiConfigContext {
+  config?: Record<string, unknown>;
+  pluginConfig?: Record<string, unknown>;
+}
+
 interface RawConfig {
   webSearch?: {
     apiKey?: unknown;
@@ -26,6 +37,20 @@ interface RawConfig {
     timeoutSeconds?: unknown;
     cacheTtlMinutes?: unknown;
   };
+}
+
+function readRecord(value: unknown): Record<string, unknown> | undefined {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined;
+}
+
+function readIflowPluginConfig(config: unknown): Record<string, unknown> | undefined {
+  const root = readRecord(config);
+  const plugins = readRecord(root?.plugins);
+  const entries = readRecord(plugins?.entries);
+  const iflow = readRecord(entries?.iflow);
+  return readRecord(iflow?.config);
 }
 
 function readSecretString(value: unknown): string | undefined {
@@ -51,7 +76,8 @@ function readEnv(name: string): string | undefined {
 }
 
 export function resolveConfig(pluginConfig: Record<string, unknown> | undefined): IflowResolvedConfig {
-  const cfg = (pluginConfig ?? {}) as RawConfig;
+  const scopedConfig = readIflowPluginConfig(pluginConfig) ?? pluginConfig;
+  const cfg = (scopedConfig ?? {}) as RawConfig;
   const ws = cfg.webSearch ?? {};
 
   const apiKey = readSecretString(ws.apiKey) ?? readEnv(ENV_API_KEY);
@@ -70,4 +96,17 @@ export function resolveConfig(pluginConfig: Record<string, unknown> | undefined)
   const cacheTtlMs = Math.round(cacheTtlMinutes * 60_000);
 
   return { apiKey, baseUrl, timeoutMs, cacheTtlMs };
+}
+
+export function resolveConfigForToolContext(
+  api: IflowPluginApiConfigContext,
+  ctx?: IflowToolConfigContext,
+): IflowResolvedConfig {
+  return resolveConfig(
+    ctx?.getRuntimeConfig?.() ??
+      ctx?.runtimeConfig ??
+      ctx?.config ??
+      api.config ??
+      api.pluginConfig,
+  );
 }

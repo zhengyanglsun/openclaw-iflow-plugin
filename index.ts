@@ -27,11 +27,11 @@
 import { createRequire } from "node:module";
 
 import { resolveConfig } from "./src/config.js";
-import { createIflowClient, type IflowClient } from "./src/client.js";
 import {
   createImageSearchTool,
   createWebFetchTool,
   createWebSearchTool,
+  type OpenClawPluginApiLike,
 } from "./src/tools.js";
 import { createIflowWebSearchProvider } from "./src/web-search-provider.js";
 
@@ -39,6 +39,7 @@ import { createIflowWebSearchProvider } from "./src/web-search-provider.js";
 // import from "openclaw/plugin-sdk" here so the plugin can be type-checked
 // without OpenClaw installed (matches openclaw-tavily's approach).
 interface PluginApi {
+  config?: Record<string, unknown>;
   pluginConfig?: Record<string, unknown>;
   logger: {
     info: (msg: string) => void;
@@ -92,8 +93,7 @@ const iflowPlugin = {
   kind: "tools" as const,
 
   register(api: PluginApi): void {
-    const cfg = resolveConfig(api.pluginConfig);
-    const client = createIflowClient({ config: cfg, logger: api.logger });
+    const cfg = resolveConfig(api.config ?? api.pluginConfig);
 
     api.logger.info(
       `iflow: initialized (baseUrl=${cfg.baseUrl}, timeout=${Math.round(
@@ -104,29 +104,35 @@ const iflowPlugin = {
     );
 
     // Tier 1 — tools mode (stable baseline)
-    registerTools(api, client);
+    registerTools(api);
 
     // Tier 2 — provider mode (best-effort, synchronous)
-    registerProviderSync(api, client);
+    registerProviderSync(api);
 
     api.registerService({
       id: PLUGIN_ID,
       start: () => api.logger.info("iflow: service started"),
       stop: () => {
-        client.clearCache();
-        api.logger.info("iflow: service stopped, cache cleared");
+        api.logger.info("iflow: service stopped");
       },
     });
   },
 };
 
-function registerTools(api: PluginApi, client: IflowClient): void {
-  api.registerTool(createWebSearchTool(client), { name: "iflow_web_search" });
-  api.registerTool(createImageSearchTool(client), { name: "iflow_image_search" });
-  api.registerTool(createWebFetchTool(client), { name: "iflow_web_fetch" });
+function registerTools(api: PluginApi): void {
+  const toolApi = api as OpenClawPluginApiLike;
+  api.registerTool((ctx: unknown) => createWebSearchTool(toolApi, ctx as never), {
+    name: "iflow_web_search",
+  });
+  api.registerTool((ctx: unknown) => createImageSearchTool(toolApi, ctx as never), {
+    name: "iflow_image_search",
+  });
+  api.registerTool((ctx: unknown) => createWebFetchTool(toolApi, ctx as never), {
+    name: "iflow_web_fetch",
+  });
 }
 
-function registerProviderSync(api: PluginApi, client: IflowClient): void {
+function registerProviderSync(api: PluginApi): void {
   if (typeof api.registerWebSearchProvider !== "function") {
     api.logger.info(
       "iflow: provider mode unavailable, staying in tools-only mode (registerWebSearchProvider not exposed by this OpenClaw runtime)",
@@ -140,7 +146,9 @@ function registerProviderSync(api: PluginApi, client: IflowClient): void {
     return;
   }
   const provider = createIflowWebSearchProvider({
-    client,
+    config: api.config,
+    pluginConfig: api.pluginConfig,
+    logger: api.logger,
     createContractFields: providerSdkFactory,
   });
   api.registerWebSearchProvider(provider);

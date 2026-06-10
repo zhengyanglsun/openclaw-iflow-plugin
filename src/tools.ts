@@ -11,7 +11,8 @@
  */
 
 import { Type, type Static, type TSchema } from "@sinclair/typebox";
-import type { IflowClient } from "./client.js";
+import { createIflowClient, type ClientLogger, type IflowClient } from "./client.js";
+import { resolveConfigForToolContext, type IflowToolConfigContext } from "./config.js";
 import {
   invalidParamError,
   missingParamError,
@@ -89,6 +90,12 @@ export interface OpenClawTool<S extends TSchema> {
   execute: (toolCallId: string, params: Record<string, unknown>) => Promise<OpenClawToolResult>;
 }
 
+export interface OpenClawPluginApiLike {
+  config?: Record<string, unknown>;
+  pluginConfig?: Record<string, unknown>;
+  logger: ClientLogger;
+}
+
 function ok(payload: unknown): OpenClawToolResult {
   return {
     content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
@@ -142,7 +149,26 @@ function readUrl(params: Record<string, unknown>): { url: string } | IflowError 
 
 // -- Tool factories ---------------------------------------------------------
 
-export function createWebSearchTool(client: IflowClient): OpenClawTool<typeof IflowWebSearchSchema> {
+type ToolFactorySource = OpenClawPluginApiLike | IflowClient;
+
+function isIflowClient(value: ToolFactorySource): value is IflowClient {
+  return "webSearch" in value && "imageSearch" in value && "webFetch" in value;
+}
+
+function createClient(api: ToolFactorySource, ctx?: IflowToolConfigContext): IflowClient {
+  if (isIflowClient(api)) {
+    return api;
+  }
+  return createIflowClient({
+    config: resolveConfigForToolContext(api, ctx),
+    logger: api.logger,
+  });
+}
+
+export function createWebSearchTool(
+  api: ToolFactorySource,
+  ctx?: IflowToolConfigContext,
+): OpenClawTool<typeof IflowWebSearchSchema> {
   return {
     name: "iflow_web_search",
     label: "iFlow Web Search",
@@ -150,6 +176,7 @@ export function createWebSearchTool(client: IflowClient): OpenClawTool<typeof If
       "Search the public web via iFlow Search (心流搜索). Returns titles, URLs, snippets, position, and (when available) publish date. Chinese-language results are first-class.",
     parameters: IflowWebSearchSchema,
     async execute(_toolCallId, params) {
+      const client = createClient(api, ctx);
       const q = readQuery(params);
       if ("error" in q) return fail(q);
       const count = readCount(params, WEB_SEARCH_DEFAULT_COUNT, WEB_SEARCH_MAX_COUNT);
@@ -163,7 +190,10 @@ export function createWebSearchTool(client: IflowClient): OpenClawTool<typeof If
   } satisfies OpenClawTool<typeof IflowWebSearchSchema> & { execute: (id: string, p: Record<string, unknown>) => Promise<OpenClawToolResult> };
 }
 
-export function createImageSearchTool(client: IflowClient): OpenClawTool<typeof IflowImageSearchSchema> {
+export function createImageSearchTool(
+  api: ToolFactorySource,
+  ctx?: IflowToolConfigContext,
+): OpenClawTool<typeof IflowImageSearchSchema> {
   return {
     name: "iflow_image_search",
     label: "iFlow Image Search",
@@ -171,6 +201,7 @@ export function createImageSearchTool(client: IflowClient): OpenClawTool<typeof 
       "Search the public web for images via iFlow Search. Returns image URLs, titles, and source page URLs.",
     parameters: IflowImageSearchSchema,
     async execute(_toolCallId, params) {
+      const client = createClient(api, ctx);
       const q = readQuery(params);
       if ("error" in q) return fail(q);
       const count = readCount(params, IMAGE_SEARCH_DEFAULT_COUNT, IMAGE_SEARCH_MAX_COUNT);
@@ -184,7 +215,10 @@ export function createImageSearchTool(client: IflowClient): OpenClawTool<typeof 
   };
 }
 
-export function createWebFetchTool(client: IflowClient): OpenClawTool<typeof IflowWebFetchSchema> {
+export function createWebFetchTool(
+  api: ToolFactorySource,
+  ctx?: IflowToolConfigContext,
+): OpenClawTool<typeof IflowWebFetchSchema> {
   return {
     name: "iflow_web_fetch",
     label: "iFlow Web Fetch",
@@ -192,6 +226,7 @@ export function createWebFetchTool(client: IflowClient): OpenClawTool<typeof Ifl
       "Fetch the readable content of a single web page via iFlow Search. Returns title, plain-text/markdown content, and a cache hint.",
     parameters: IflowWebFetchSchema,
     async execute(_toolCallId, params) {
+      const client = createClient(api, ctx);
       const u = readUrl(params);
       if ("error" in u) return fail(u);
       const result = await client.webFetch(u.url);

@@ -14,7 +14,8 @@
  */
 
 import { Type, type Static } from "@sinclair/typebox";
-import type { IflowClient } from "./client.js";
+import { createIflowClient, type ClientLogger, type IflowClient } from "./client.js";
+import { resolveConfigForToolContext, type IflowToolConfigContext } from "./config.js";
 import { normalizeWebSearch } from "./normalize.js";
 
 const CREDENTIAL_PATH = "plugins.entries.iflow.config.webSearch.apiKey";
@@ -39,7 +40,10 @@ export const IflowProviderSearchSchema = Type.Object({
 export type IflowProviderSearchParams = Static<typeof IflowProviderSearchSchema>;
 
 export interface CreateProviderOpts {
-  client: IflowClient;
+  client?: IflowClient;
+  config?: Record<string, unknown>;
+  pluginConfig?: Record<string, unknown>;
+  logger?: ClientLogger;
   /** Imported dynamically from openclaw/plugin-sdk/provider-web-search-config-contract. */
   createContractFields: (opts: {
     credentialPath: string;
@@ -68,11 +72,16 @@ export interface IflowWebSearchProvider extends Record<string, unknown> {
   docsUrl: string;
   autoDetectOrder: number;
   credentialPath: string;
-  createTool: () => IflowProviderToolDefinition;
+  createTool: (ctx?: IflowToolConfigContext) => IflowProviderToolDefinition;
 }
 
 export function createIflowWebSearchProvider(opts: CreateProviderOpts): IflowWebSearchProvider {
-  const { client, createContractFields } = opts;
+  const { createContractFields } = opts;
+  const logger = opts.logger ?? {
+    info: () => {},
+    warn: () => {},
+    error: () => {},
+  };
 
   const contractFields = createContractFields({
     credentialPath: CREDENTIAL_PATH,
@@ -93,11 +102,17 @@ export function createIflowWebSearchProvider(opts: CreateProviderOpts): IflowWeb
     docsUrl: "https://platform.iflow.cn/docs/",
     autoDetectOrder: 80,
     credentialPath: CREDENTIAL_PATH,
-    createTool: () => ({
+    createTool: (ctx) => ({
       description:
         "Search the public web via iFlow Search (心流搜索). Returns titles, URLs, snippets, position, and (when available) publish date. Chinese-language results are first-class.",
       parameters: IflowProviderSearchSchema,
       execute: async (args) => {
+        const client =
+          opts.client ??
+          createIflowClient({
+            config: resolveConfigForToolContext(opts, ctx),
+            logger,
+          });
         const rawQuery = args.query;
         if (typeof rawQuery !== "string") {
           return { error: "missing_param", message: 'Parameter "query" is required.' };
