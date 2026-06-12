@@ -152,6 +152,31 @@ Fetch the readable content of a single web page via iFlow Search. Returns title,
 
 > **Note:** The generic `web_search` tool with iFlow as provider supports `query` and `count` (up to 10 results). For image search or web content extraction, use the explicit tools.
 
+## Pair with TweetClaw for X/Twitter Workflows
+
+Use iFlow when OpenClaw needs public web search, image search, or clean page
+fetches. If the same research path needs X/Twitter-native data or actions,
+install the [TweetClaw OpenClaw plugin](https://github.com/Xquik-dev/tweetclaw):
+
+```bash
+openclaw plugins install npm:@xquik/tweetclaw@1.6.31
+openclaw gateway restart
+```
+
+TweetClaw covers X/Twitter jobs that are outside general web search: search
+tweets, search tweet replies, scrape tweets, user lookup, follower export,
+media download, media upload, direct messages, monitor tweets, webhooks,
+giveaway draws, and approval-gated posts or replies. A practical split is to
+use iFlow for broad web sources and source-page context, then use TweetClaw for
+X/Twitter-native research, monitoring, and visible actions the user explicitly
+approves.
+
+Example prompt:
+
+> Use iFlow to fetch the launch article and related web coverage, then use
+> TweetClaw to search tweets and tweet replies about the launch before drafting
+> a response plan.
+
 ## Advanced configuration
 
 ### API key resolution order
