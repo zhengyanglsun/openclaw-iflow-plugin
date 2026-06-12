@@ -1,49 +1,34 @@
-# @iflow-ai/iflow-plugin
+# iFlow Search for OpenClaw
 
-[iFlow Search (心流搜索)](https://platform.iflow.cn) plugin for [OpenClaw](https://docs.openclaw.ai).
+> Connect Your AI Agent to the Real World.
 
-Three agent tools backed by iFlow's `/api/search/*` endpoints:
+[iFlow Search (心流搜索)](https://platform.iflow.cn) is a search API designed for AI applications. OpenClaw exposes it in two ways:
 
-| Tool | Purpose |
-|---|---|
-| `iflow_web_search` | Public web search with structured results (title / url / snippet / position / date). |
-| `iflow_image_search` | Image search with source-page attribution. |
-| `iflow_web_fetch` | Read the clean content of a single web page. |
+- as the `web_search` provider for the generic search tool
+- as explicit plugin tools: `iflow_web_search`, `iflow_image_search`, `iflow_web_fetch`
 
-The plugin also registers `iflow` as a `web_search` provider so users can route
-the managed `web_search` tool through iFlow with one config line — this is
-**best-effort** and activates only if the running OpenClaw exposes the
-provider-registration API; otherwise the plugin runs in tools-only mode.
+iFlow returns structured results optimized for LLM consumption with Chinese-first indexing, structured snippets, image search, and web content extraction.
 
-## Install
+| Property      | Value                                |
+| ------------- | ------------------------------------ |
+| Plugin id     | `iflow`                              |
+| Auth          | `IFLOW_API_KEY` or config `apiKey`   |
+| Base URL      | `https://platform.iflow.cn` (default)|
+| Bundled tools | `iflow_web_search`, `iflow_image_search`, `iflow_web_fetch` |
 
-```bash
-openclaw plugins install @iflow-ai/iflow-plugin
-openclaw gateway restart
-```
+## Getting started
 
-Or from a local checkout (during development):
+### 1. Get an API key
 
-```bash
-git clone <repo> ~/.openclaw/extensions/iflow-plugin
-cd ~/.openclaw/extensions/iflow-plugin
-npm install --omit=dev
-openclaw gateway restart
-```
+Create an iFlow account at [platform.iflow.cn](https://platform.iflow.cn), then generate an API key in the dashboard.
 
-## Configuration
-
-### 1. API key
-
-Get one from the [iFlow Open Platform](https://platform.iflow.cn).
-
-Either set the env var:
+### 2. Install the plugin
 
 ```bash
-export IFLOW_API_KEY=sk-...
+openclaw plugins install @iflow-ai/iflow-plugin@0.1.6
 ```
 
-Or put it in `~/.openclaw/openclaw.json`:
+### 3. Configure the plugin and provider
 
 ```json5
 {
@@ -53,115 +38,138 @@ Or put it in `~/.openclaw/openclaw.json`:
         enabled: true,
         config: {
           webSearch: {
-            apiKey: "sk-...",     // sensitive; can also be a SecretRef object
-            baseUrl: "https://platform.iflow.cn",  // optional override
-            timeoutSeconds: 30,    // optional, default 30
-            cacheTtlMinutes: 15    // optional, default 15; set 0 to disable
-          }
-        }
-      }
-    }
-  }
+            apiKey: "your-key-here", // optional if IFLOW_API_KEY is set
+          },
+        },
+      },
+    },
+  },
+  tools: {
+    web: {
+      search: {
+        provider: "iflow",
+      },
+    },
+    // Enable iFlow explicit tools alongside the coding profile
+    alsoAllow: [
+      "iflow_web_search",
+      "iflow_image_search",
+      "iflow_web_fetch"
+    ],
+  },
 }
 ```
 
-### 2. Route managed `web_search` through iFlow (optional)
+### 4. Verify search runs
+
+Trigger a `web_search` from any agent, or call `iflow_web_search` directly.
+
+> **Tip:** Choosing iFlow in onboarding or `openclaw configure --section web` enables the plugin automatically.
+
+## Understanding provider vs explicit tools
+
+The iFlow plugin exposes two capability layers:
+
+### Web Search Provider
+
+When configured as `tools.web.search.provider = "iflow"`, iFlow powers the built-in **`web_search`** tool. This tool is always visible in the `coding` profile — no extra configuration needed.
+
+### Explicit Tools
+
+The plugin also registers three explicit tools with additional capabilities:
+
+| Tool | Purpose | Why use it |
+|------|---------|-----------|
+| `iflow_web_search` | Web search with iFlow-specific controls | Direct access, independent of provider routing |
+| `iflow_image_search` | **Image search** — not available via `web_search` | The only way to search images through iFlow |
+| `iflow_web_fetch` | Fetch web page content | Direct access, independent of provider routing |
+
+> **Important:** `iflow_image_search` is **not** the OpenClaw built-in `image` tool (which is for image understanding/vision). It is a dedicated image search tool that returns image URLs, titles, and source pages.
+
+### Tool visibility and profiles
+
+OpenClaw's `tools.profile` controls which tools are available to the agent:
+
+| Profile | `web_search` (provider) | Explicit tools (`iflow_*`) |
+|---------|------------------------|---------------------------|
+| `coding` (default) | ✅ Always visible | ❌ Hidden by default |
+| `full` | ✅ Always visible | ✅ Visible |
+| `coding` + `alsoAllow` | ✅ Always visible | ✅ Visible |
+
+To enable explicit tools with the `coding` profile, add `alsoAllow` to your `tools` config:
 
 ```json5
 {
   tools: {
-    web: {
-      search: {
-        provider: "iflow"
-      }
-    }
-  }
+    profile: "coding",
+    alsoAllow: [
+      "iflow_web_search",
+      "iflow_image_search",
+      "iflow_web_fetch"
+    ],
+  },
 }
 ```
 
-If your OpenClaw runtime does not support third-party `web_search` providers,
-this line has no effect — the explicit tools below still work.
+> **Note:** This is standard OpenClaw behavior — all plugin explicit tools (including Tavily's `tavily_search` and `tavily_extract`) follow the same profile rules.
 
-## Tools
+## Tool reference
 
 ### `iflow_web_search`
 
-| Param | Type | Required | Default | Notes |
-|---|---|---|---|---|
-| `query` | string | yes | — | Sent as iFlow `keywords` |
-| `count` | number | no | 10 | Clamped to `[1, 10]`. Sent as iFlow `num` |
+Search the public web via iFlow Search (心流搜索). Returns titles, URLs, snippets, position, and (when available) publish date. Chinese-language results are first-class.
 
-Returns:
-
-```json
-{
-  "query": "...",
-  "provider": "iflow",
-  "count": 3,
-  "tookMs": 1383,
-  "results": [
-    { "title": "...", "url": "...", "snippet": "...", "position": 1, "date": null }
-  ]
-}
-```
+| Parameter | Type   | Constraints / default | Description                        |
+| --------- | ------ | --------------------- | ---------------------------------- |
+| `query`   | string | required              | Search query string.               |
+| `count`   | number | 1–10, default 10      | Number of results to return.       |
 
 ### `iflow_image_search`
 
-| Param | Type | Required | Default | Notes |
-|---|---|---|---|---|
-| `query` | string | yes | — | Sent as iFlow `keywords` |
-| `count` | number | no | 10 | Clamped to `[1, 20]`. Sent as iFlow `num` |
+Search the public web for images via iFlow Search. Returns image URLs, titles, and source page URLs.
 
-Returns:
-
-```json
-{
-  "query": "...",
-  "provider": "iflow",
-  "count": 3,
-  "tookMs": 1715,
-  "images": [
-    { "url": "...jpg", "title": "...", "sourceUrl": "..." }
-  ]
-}
-```
+| Parameter | Type   | Constraints / default | Description                        |
+| --------- | ------ | --------------------- | ---------------------------------- |
+| `query`   | string | required              | Image search query string.         |
+| `count`   | number | 1–20, default 10      | Number of images to return.        |
 
 ### `iflow_web_fetch`
 
-| Param | Type | Required | Notes |
-|---|---|---|---|
-| `url` | string | yes | Must be an http(s) URL |
+Fetch the readable content of a single web page via iFlow Search. Returns title, plain-text/markdown content, and a cache hint.
 
-Returns:
+| Parameter | Type   | Constraints / default | Description                        |
+| --------- | ------ | --------------------- | ---------------------------------- |
+| `url`     | string | required              | HTTP(S) URL to fetch.              |
 
-```json
-{
-  "title": "...",
-  "url": "...",
-  "content": "...",
-  "fromCache": true,
-  "provider": "iflow",
-  "tookMs": 335
-}
-```
+## Choosing the right tool
 
-## Pair with TweetClaw for X/Twitter workflows
+| Need                                     | Tool                |
+| ---------------------------------------- | ------------------- |
+| Quick web search, no special options     | `web_search`        |
+| iFlow-specific search with count control | `iflow_web_search`  |
+| Image search                             | `iflow_image_search`|
+| Extract content from a specific URL      | `iflow_web_fetch`   |
+
+> **Note:** The generic `web_search` tool with iFlow as provider supports `query` and `count` (up to 10 results). For image search or web content extraction, use the explicit tools.
+
+## Pair with TweetClaw for X/Twitter Workflows
 
 Use iFlow when OpenClaw needs public web search, image search, or clean page
-fetches. If the same research path needs X/Twitter-specific data or actions,
+fetches. If the same research path needs X/Twitter-native data or actions,
 install the [TweetClaw OpenClaw plugin](https://github.com/Xquik-dev/tweetclaw):
 
 ```bash
-openclaw plugins install @xquik/tweetclaw@latest
+openclaw plugins install npm:@xquik/tweetclaw@1.6.31
 openclaw gateway restart
 ```
 
 TweetClaw covers X/Twitter jobs that are outside general web search: search
-tweets, search tweet replies, user lookup, follower export, media download,
-media upload, direct messages, monitor tweets, webhooks, giveaway draws, and
-approval-gated posts or replies. A practical split is to use iFlow for broad
-web sources and source-page context, then use TweetClaw for X/Twitter-native
-research, monitoring, and visible actions the user explicitly approves.
+tweets, search tweet replies, scrape tweets, user lookup, follower export,
+media download, media upload, direct messages, monitor tweets, webhooks,
+giveaway draws, and approval-gated posts or replies. A practical split is to
+use iFlow for broad web sources and source-page context, then use TweetClaw for
+X/Twitter-native research, monitoring, and visible actions the user explicitly
+approves.
 
 Example prompt:
 
@@ -169,64 +177,63 @@ Example prompt:
 > TweetClaw to search tweets and tweet replies about the launch before drafting
 > a response plan.
 
-## Local development
+## Advanced configuration
+
+### API key resolution order
+
+The iFlow client looks up its API key in this order:
+
+1. `plugins.entries.iflow.config.webSearch.apiKey` (resolved through SecretRefs).
+2. `IFLOW_API_KEY` from the gateway environment.
+
+All tools raise a setup error if neither is present.
+
+### Custom base URL
+
+Override `plugins.entries.iflow.config.webSearch.baseUrl` if you front iFlow through a proxy. The default is `https://platform.iflow.cn`.
+
+### Config options
+
+| Option                    | Default                      | Description                                  |
+| ------------------------- | ---------------------------- | -------------------------------------------- |
+| `webSearch.apiKey`        | `IFLOW_API_KEY` env var      | API key (string or SecretRef).               |
+| `webSearch.baseUrl`       | `https://platform.iflow.cn`  | API endpoint override.                       |
+| `webSearch.timeoutSeconds`| `30`                         | HTTP timeout per request in seconds.         |
+| `webSearch.cacheTtlMinutes`| `15`                        | In-memory cache TTL in minutes. Set 0 to disable. |
+
+## Verify
 
 ```bash
-npm install
-npm run typecheck     # tsc --noEmit
-npm test              # vitest (uses mocked fetch, no live API calls)
-
-# Optional: live probe of all three endpoints.
-# Reads IFLOW_API_KEY from the env. Does NOT log the key.
-IFLOW_API_KEY=sk-... npm run smoke
-IFLOW_API_KEY=sk-... npm run smoke web     # web only
-IFLOW_API_KEY=sk-... npm run smoke image
-IFLOW_API_KEY=sk-... npm run smoke fetch
-```
-
-To exercise the plugin inside a real OpenClaw gateway:
-
-```bash
-# 1. Pack and install from the local build
-npm pack
-openclaw plugins install npm-pack:./iflow-ai-iflow-plugin-0.1.0.tgz
-openclaw gateway restart
-
-# 2. Verify what was registered
 openclaw plugins inspect iflow --runtime --json
 ```
 
+Check `toolNames` contains all three tools and `diagnostics` is empty.
+
 ## Troubleshooting
 
-| Symptom | Likely cause | Fix |
-|---|---|---|
-| Every call returns `missing_api_key` | Env var not loaded by the gateway | Restart gateway after exporting `IFLOW_API_KEY`, or put the key in `openclaw.json` |
-| `api_error` with `status: 401` | Wrong / revoked key | Rotate the key on the iFlow platform |
-| `api_error` with `status: 403` | Account not entitled to this endpoint | Check the iFlow plan / contact iFlow support |
-| `api_error` with `status: 429` | Rate limit | Lower request rate; the plugin caches identical queries for `cacheTtlMinutes` |
-| `network_timeout` | Slow upstream / cold cache | Increase `timeoutSeconds`; retry |
-| `api_business_error` with code `4xxx` | iFlow returned `success: false` | Inspect `message` / `code` in the error payload |
-| Results have a `url` field on iFlow but show as empty | iFlow renamed `link` → `url` (or similar) | Update `src/normalize.ts` mapping; tests in `src/__tests__/normalize.test.ts` show where |
-| Plugin loads but `web_search` doesn't route through iFlow | OpenClaw runtime doesn't expose `registerWebSearchProvider` (info log will say so) | Use the explicit `iflow_web_search` tool instead, or upgrade OpenClaw |
+| Symptom | Fix |
+|---|---|
+| `missing_api_key` | Export `IFLOW_API_KEY` or set `webSearch.apiKey` in config. |
+| Provider not showing | Set `tools.web.search.provider = "iflow"` and restart gateway. |
+| Old version installed | Reinstall: `openclaw plugins install @iflow-ai/iflow-plugin@0.1.6 --force` |
+| `registerWebSearchProvider not exposed` | Normal — plugin falls back to tools-only mode automatically. |
+| Explicit tools not in agent tool list | Add `tools.alsoAllow: ["iflow_web_search", "iflow_image_search", "iflow_web_fetch"]` to your config. Or set `tools.profile = "full"`. See [Tool visibility and profiles](#tool-visibility-and-profiles). |
+| `plugins inspect` shows empty `tools:[]` | Normal for factory-registered tools. Use `--runtime` flag to see `toolNames`. |
 
-## Compatibility
+## Security
 
-- `peerDependency`: `openclaw >= 2025.0.0` (optional)
-- **Tools mode** (3 explicit tools): always on.
-- **Provider mode** (managed `web_search` routing): activates only when the
-  runtime exposes `api.registerWebSearchProvider` AND the SDK subpath
-  `openclaw/plugin-sdk/provider-web-search-config-contract` is importable.
-  Failure is logged at info level; the plugin keeps working in tools mode.
+- Never commit your API key — use env vars or SecretRef.
+- Plugin only logs whether key is configured (boolean), never the key itself.
+- Attribution headers (`IFlow-Source`, `IFlow-Integration`, `IFlow-Integration-Version`) contain no secrets.
 
-## Acknowledgements
+## Local Development
 
-This plugin includes an OpenClaw-specific skill definition under
-`skills/iflow-search/SKILL.md`. It is adapted from the official iFlow skill
-catalog, but uses OpenClaw tool names and normalized parameters / return
-fields instead of the upstream shell-script interface.
-
-Official iFlow skill reference:
-https://github.com/iflow-ai/iflow-skills/tree/main/skills/iflow-search
+```bash
+npm install
+npm run typecheck
+npm test
+npm run smoke        # optional, needs IFLOW_API_KEY
+```
 
 ## License
 

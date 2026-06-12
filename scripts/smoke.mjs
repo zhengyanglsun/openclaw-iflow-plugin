@@ -2,18 +2,19 @@
 /**
  * Local smoke test for the iFlow API.
  *
- *   IFLOW_API_KEY=sk-... node scripts/smoke.mjs
+ *   read -s -p 'IFLOW_API_KEY: ' IFLOW_API_KEY; export IFLOW_API_KEY; echo
+ *   node scripts/smoke.mjs
  *
  * Optional second arg to pick a single endpoint: web | image | fetch
  *
- *   IFLOW_API_KEY=sk-... node scripts/smoke.mjs web
+ *   node scripts/smoke.mjs web
  *
  * The script does NOT depend on OpenClaw — it talks to platform.iflow.cn
  * directly and prints the normalized result. It deliberately does NOT log the
  * API key.
  */
 
-import { resolveConfig, redactApiKey } from "../dist/src/config.js";
+import { resolveConfig } from "../dist/src/config.js";
 import { createIflowClient } from "../dist/src/client.js";
 import {
   normalizeImageSearch,
@@ -41,7 +42,7 @@ const logger = {
   error: (m) => console.error(`[error] ${m}`),
 };
 
-console.log(`smoke: using key ${redactApiKey(config.apiKey)} against ${config.baseUrl}`);
+console.log(`smoke: IFLOW_API_KEY is set; using base URL ${config.baseUrl}`);
 
 const client = createIflowClient({ config, logger });
 

@@ -2,7 +2,7 @@
  * Config resolution for the iFlow plugin.
  *
  * The plugin reads `pluginConfig.webSearch.*` and falls back to env vars
- * for the API key. SecretRef objects (resolved by OpenClaw upstream) are
+ * for the API key and optional base URL. SecretRef objects (resolved by OpenClaw upstream) are
  * tolerated by accepting `string | { value: string } | unknown`.
  */
 
@@ -10,12 +10,24 @@ export const DEFAULT_BASE_URL = "https://platform.iflow.cn";
 export const DEFAULT_TIMEOUT_SECONDS = 30;
 export const DEFAULT_CACHE_TTL_MINUTES = 15;
 export const ENV_API_KEY = "IFLOW_API_KEY";
+export const ENV_BASE_URL = "IFLOW_BASE_URL";
 
 export interface IflowResolvedConfig {
   apiKey: string | undefined;
   baseUrl: string;
   timeoutMs: number;
   cacheTtlMs: number;
+}
+
+export interface IflowToolConfigContext {
+  config?: Record<string, unknown>;
+  runtimeConfig?: Record<string, unknown>;
+  getRuntimeConfig?: () => Record<string, unknown> | undefined;
+}
+
+export interface IflowPluginApiConfigContext {
+  config?: Record<string, unknown>;
+  pluginConfig?: Record<string, unknown>;
 }
 
 interface RawConfig {
@@ -25,6 +37,20 @@ interface RawConfig {
     timeoutSeconds?: unknown;
     cacheTtlMinutes?: unknown;
   };
+}
+
+function readRecord(value: unknown): Record<string, unknown> | undefined {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined;
+}
+
+function readIflowPluginConfig(config: unknown): Record<string, unknown> | undefined {
+  const root = readRecord(config);
+  const plugins = readRecord(root?.plugins);
+  const entries = readRecord(plugins?.entries);
+  const iflow = readRecord(entries?.iflow);
+  return readRecord(iflow?.config);
 }
 
 function readSecretString(value: unknown): string | undefined {
@@ -50,12 +76,13 @@ function readEnv(name: string): string | undefined {
 }
 
 export function resolveConfig(pluginConfig: Record<string, unknown> | undefined): IflowResolvedConfig {
-  const cfg = (pluginConfig ?? {}) as RawConfig;
+  const scopedConfig = readIflowPluginConfig(pluginConfig) ?? pluginConfig;
+  const cfg = (scopedConfig ?? {}) as RawConfig;
   const ws = cfg.webSearch ?? {};
 
   const apiKey = readSecretString(ws.apiKey) ?? readEnv(ENV_API_KEY);
 
-  const rawBaseUrl = readSecretString(ws.baseUrl) ?? DEFAULT_BASE_URL;
+  const rawBaseUrl = readSecretString(ws.baseUrl) ?? readEnv(ENV_BASE_URL) ?? DEFAULT_BASE_URL;
   const baseUrl = rawBaseUrl.replace(/\/+$/u, "") || DEFAULT_BASE_URL;
 
   const timeoutSeconds = typeof ws.timeoutSeconds === "number" && Number.isFinite(ws.timeoutSeconds) && ws.timeoutSeconds > 0
@@ -71,8 +98,15 @@ export function resolveConfig(pluginConfig: Record<string, unknown> | undefined)
   return { apiKey, baseUrl, timeoutMs, cacheTtlMs };
 }
 
-export function redactApiKey(key: string | undefined): string {
-  if (!key) return "<unset>";
-  if (key.length <= 8) return "***";
-  return `${key.slice(0, 4)}***${key.slice(-2)}`;
+export function resolveConfigForToolContext(
+  api: IflowPluginApiConfigContext,
+  ctx?: IflowToolConfigContext,
+): IflowResolvedConfig {
+  return resolveConfig(
+    ctx?.getRuntimeConfig?.() ??
+      ctx?.runtimeConfig ??
+      ctx?.config ??
+      api.config ??
+      api.pluginConfig,
+  );
 }
